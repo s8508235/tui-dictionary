@@ -1,3 +1,4 @@
+APP      = ./bin/dict
 TARGET = $$(awk -F "=" '/target/ {print $$2}' app.ini)
 ##@ Run
 .PHONY: run
@@ -6,18 +7,17 @@ run: ## run server
 ##@ Build
 .PHONY: build
 build: ## build server binary
-	go build -o ./bin/main main.go
-##@ Search
-.PHONY: search
-search: ## search dictionary word definition
-	while true ; do \
-		echo "input: "; \
-		read WORD; \
-		curl "localhost:8087/search/$$WORD"; \
-	done
+	go build -o ${APP} main.go
 
 target:  ## Show version
 	echo ${TARGET}
+
+lint-install: 
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.40.1
+	# curl -sSO - https://github.com/golangci/golangci-lint/releases/download/v1.40.1/golangci-lint-1.40.1-linux-amd64.tar.gz | tar -xaf
+
+test-lint:
+	./bin/golangci-lint run ./...
 ##@ Help
 
 .PHONY: help

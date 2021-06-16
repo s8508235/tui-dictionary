@@ -8,18 +8,18 @@ import (
 	"github.com/gocolly/colly"
 )
 
-const collinsURL = "https://www.collinsdictionary.com/dictionary/english/%s"
+const urbanURL = "https://www.urbandictionary.com/define.php?term=%s"
 
-type Collins struct {
+type Urban struct {
 	Crawler *colly.Collector
 	Logger  *log.Logger
 }
 
-func (c *Collins) Search(word string) ([]string, error) {
+func (c *Urban) Search(word string) ([]string, error) {
 	crawler := c.Crawler.Clone()
 	result := make([]string, 0, 3)
 	count := 0
-	crawler.OnHTML("div.dictionary.Cob_Adv_Brit.dictentry div.definitions div.hom div.def", func(e *colly.HTMLElement) {
+	crawler.OnHTML("div#content div.def-panel div.meaning", func(e *colly.HTMLElement) {
 		if count < 3 {
 			result = append(result, e.Text)
 		} else {
@@ -40,12 +40,12 @@ func (c *Collins) Search(word string) ([]string, error) {
 		c.Logger.Logrus.Debugln("Finished", r.Request.URL.String())
 	})
 
-	searchURL := fmt.Sprintf(collinsURL, re.ReplaceAllString(word, "-"))
+	searchURL := fmt.Sprintf(urbanURL, re.ReplaceAllString(word, "-"))
 	err := crawler.Visit(searchURL)
 
 	if err == nil && count == 0 {
 		return result, ErrorNoDef
 	}
 
-	return result, err
+	return result, nil
 }

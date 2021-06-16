@@ -46,7 +46,11 @@ func main() {
 		logger.Logrus.Errorln("Fail to open db", err)
 		os.Exit(1)
 	}
-	db.AutoMigrate(&model.Dictionary{})
+	err = db.AutoMigrate(&model.Dictionary{})
+	if err != nil {
+		logger.Logrus.Errorln("Fail to migrate db", err)
+		os.Exit(1)
+	}
 	sqlDB, err := db.DB()
 	if err != nil {
 		logger.Logrus.Errorln("Fail to access sql/db", err)
@@ -68,7 +72,11 @@ func main() {
 		logger.Logrus.Errorln("Fail to init lemmatizer", err)
 		os.Exit(1)
 	}
-	dict := dictionary.NewCollinsDictionary(logger)
+	dict, err := dictionary.NewMyPreferDictionary(logger, "tcp", "dict.dict.org:2628", "!")
+	if err != nil {
+		logger.Logrus.Errorln("Fail to init dictionary", err)
+		os.Exit(1)
+	}
 
 	query := "word"
 
@@ -80,7 +88,6 @@ func main() {
 			HideOrder:   true,
 			ValidateFunc: func(s string) error {
 				match, err := regexp.MatchString(`(?s)^[a-zA-Z\s]+$`, s)
-				logger.Logrus.Debug(match, err)
 				if err != nil {
 					logger.Logrus.Errorln("Fail to match pattern", err)
 					return err
@@ -93,57 +100,69 @@ func main() {
 				}
 			},
 		})
-		if err != nil && err != input.ErrInterrupted {
-			logger.Logrus.Errorln("Fail to ask", err)
-			os.Exit(1)
-		} else if err == input.ErrInterrupted {
+		switch err {
+		case nil:
+			break
+		case errWord:
+			continue
+		case input.ErrInterrupted:
 			fmt.Println()
 			os.Exit(0)
+		default:
+			logger.Logrus.Errorln("Fail to ask", err)
+			os.Exit(1)
 		}
 		searchWord := lemmatizer.Lemma(inputWord)
+		logger.Logrus.Debugln("going to search", searchWord)
 		var word model.Dictionary
 		result := db.Where("word = ?", searchWord).First(&word)
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			results, count := dict.Search(searchWord)
-			if count == 0 {
-				fmt.Printf("no definition for : %s\n", searchWord)
+			results, err := dict.Search(searchWord)
+			if err == dictionary.ErrorNoDef {
+				fmt.Printf("no definition for: %s\n", searchWord)
 				continue
+			} else if err != nil {
+				logger.Logrus.Errorln("Search error:", err)
+				os.Exit(1)
 			}
-			defs, err := displayDefinition(results)
+			defs, err := displayDefinition(results...)
 			if err != nil {
-				fmt.Println(err)
+				logger.Logrus.Error(err)
+				continue
 			}
 			fmt.Printf("definition: %s\n", defs)
 			b, err := msgpack.Marshal(results)
 			if err != nil {
-				fmt.Println(err)
+				logger.Logrus.Error(err)
+				continue
 			}
 			db.Create(&model.Dictionary{Word: searchWord, Definition: b})
 		} else {
-
-			var results [3]string
-			msgpack.Unmarshal(word.Definition, &results)
-			defs, err := displayDefinition(results)
+			var results []string
+			err = msgpack.Unmarshal(word.Definition, &results)
 			if err != nil {
-				fmt.Println(err)
+				logger.Logrus.Error(err)
+				continue
+			}
+			defs, err := displayDefinition(results...)
+			if err != nil {
+				logger.Logrus.Error(err)
+				continue
 			}
 			fmt.Printf("definition: %s\n", defs)
 		}
 	}
-	// r := mux.NewRouter()
-	// r.HandleFunc("/search/{word:\\w+}", searchDictionary(dict, db, lemmatizer)).Methods("GET")
-	// http.ListenAndServe(":8087", r)
 }
 
-func displayDefinition(defs [3]string) (string, error) {
+func displayDefinition(defs ...string) (string, error) {
 	var buf strings.Builder
 	var err error
 	_, err = buf.WriteRune('\n')
 	if err != nil {
 		return buf.String(), err
 	}
-	for i := 0; i < 3; i++ {
-		if len(defs[i]) > 0 {
+	for i, def := range defs {
+		if len(def) > 0 {
 			_, err = buf.WriteString(strconv.Itoa(i + 1))
 			if err != nil {
 				break
@@ -152,7 +171,15 @@ func displayDefinition(defs [3]string) (string, error) {
 			if err != nil {
 				break
 			}
-			_, err = buf.WriteString(defs[i])
+			_, err = buf.WriteString("\t")
+			if err != nil {
+				break
+			}
+			_, err = buf.WriteString(strings.ReplaceAll(def, "\n", "\n\t"))
+			if err != nil {
+				break
+			}
+			_, err = buf.WriteRune('\n')
 			if err != nil {
 				break
 			}
@@ -162,34 +189,3 @@ func displayDefinition(defs [3]string) (string, error) {
 	}
 	return buf.String(), err
 }
-
-// func searchDictionary(dict dictionary.Dictionary, db *gorm.DB, lemmatizer *golem.Lemmatizer) func(w http.ResponseWriter, req *http.Request) {
-// 	return func(w http.ResponseWriter, req *http.Request) {
-// 		vars := mux.Vars(req)
-// 		w.WriteHeader(http.StatusOK)
-// 		searchWord := lemmatizer.Lemma(vars["word"])
-// 		// fmt.Printf("trigger %s\n", searchWord)
-// 		// fmt.Fprintf(w, "word: %v\n", )
-
-// 		var word model.Dictionary
-// 		result := db.Where("word = ?", searchWord).First(&word)
-// 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-// 			results, count := dict.Search(searchWord)
-// 			if count == 0 {
-// 				fmt.Fprintf(w, "no definition for : %s\n", searchWord)
-// 				return
-// 			}
-// 			fmt.Fprintf(w, "definition: %v\n", results)
-// 			b, err := msgpack.Marshal(results)
-// 			if err != nil {
-// 				fmt.Println(err)
-// 			}
-// 			db.Create(&model.Dictionary{Word: searchWord, Definition: b})
-// 		} else {
-
-// 			var defs [3]string
-// 			msgpack.Unmarshal(word.Definition, &defs)
-// 			fmt.Fprintf(w, "definition: %v\n", defs)
-// 		}
-// 	}
-// }
