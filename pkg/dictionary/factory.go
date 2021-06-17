@@ -3,7 +3,7 @@ package dictionary
 import (
 	"regexp"
 
-	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/v2"
 	"github.com/s8508235/tui-dictionary/pkg/log"
 	"golang.org/x/net/dict"
 )
@@ -17,6 +17,8 @@ func NewDICTClient(logger *log.Logger, network, addr, prefix string) (*DICTClien
 	}
 
 	return &DICTClient{
+		network:          network,
+		addr:             addr,
 		Client:           client,
 		Logger:           logger,
 		DictionaryPrefix: prefix,

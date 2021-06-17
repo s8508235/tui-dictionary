@@ -5,7 +5,7 @@ import (
 
 	"github.com/s8508235/tui-dictionary/pkg/log"
 
-	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/v2"
 )
 
 const collinsURL = "https://www.collinsdictionary.com/dictionary/english/%s"

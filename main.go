@@ -4,16 +4,20 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/aaaton/golem/v4"
 	"github.com/aaaton/golem/v4/dicts/en"
+	"github.com/maxmclau/gput"
 	"github.com/s8508235/tui-dictionary/model"
 	"github.com/s8508235/tui-dictionary/pkg/database"
 	"github.com/s8508235/tui-dictionary/pkg/dictionary"
 	"github.com/s8508235/tui-dictionary/pkg/log"
+	"github.com/s8508235/tui-dictionary/pkg/tools"
 	"github.com/tcnksm/go-input"
 	"github.com/vmihailenco/msgpack"
 	"gopkg.in/ini.v1"
@@ -31,6 +35,10 @@ func main() {
 	}
 	dictionaryType := cfg.Section("").Key("dictionary").String()
 	target := strings.ToLower(strings.ReplaceAll(cfg.Section("").Key("target").String(), " ", "-"))
+	screenLines := cfg.Section("").Key("screen_lines").MustInt()
+	if screenLines == 0 {
+		screenLines = gput.Lines()
+	}
 
 	logLevel := cfg.Section("").Key("level").String()
 	logger.SetLogLevel(logLevel)
@@ -38,9 +46,12 @@ func main() {
 	if len(target) == 0 {
 		target = "target"
 	}
-	fmt.Println("Use dictionary:", dictionaryType)
-	fmt.Println("Target:", target)
-	fmt.Println("===== Press Ctrl+C to exit =====")
+	starter := func() {
+		fmt.Println("Use dictionary:", dictionaryType)
+		fmt.Println("Target:", target)
+		fmt.Println("===== Press Ctrl+C to exit =====")
+	}
+	starter()
 	db, err := database.NewSqlLiteConnection(target, logger)
 	if err != nil {
 		logger.Logrus.Errorln("Fail to open db", err)
@@ -77,6 +88,8 @@ func main() {
 		logger.Logrus.Errorln("Fail to init dictionary", err)
 		os.Exit(1)
 	}
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGTSTP)
 
 	query := "word"
 
@@ -112,11 +125,16 @@ func main() {
 			logger.Logrus.Errorln("Fail to ask", err)
 			os.Exit(1)
 		}
+		if inputWord == "cls" {
+			tools.CallClear()
+			starter()
+			continue
+		}
 		searchWord := lemmatizer.Lemma(inputWord)
 		logger.Logrus.Debugln("going to search", searchWord)
 		var word model.Dictionary
-		result := db.Where("word = ?", searchWord).First(&word)
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		dbResult := db.Where("word = ?", searchWord).First(&word)
+		if errors.Is(dbResult.Error, gorm.ErrRecordNotFound) {
 			results, err := dict.Search(searchWord)
 			if err == dictionary.ErrorNoDef {
 				fmt.Printf("no definition for: %s\n", searchWord)
@@ -125,7 +143,7 @@ func main() {
 				logger.Logrus.Errorln("Search error:", err)
 				os.Exit(1)
 			}
-			defs, err := displayDefinition(results...)
+			defs, err := displayDefinition(logger, screenLines, results...)
 			if err != nil {
 				logger.Logrus.Error(err)
 				continue
@@ -144,7 +162,7 @@ func main() {
 				logger.Logrus.Error(err)
 				continue
 			}
-			defs, err := displayDefinition(results...)
+			defs, err := displayDefinition(logger, screenLines, results...)
 			if err != nil {
 				logger.Logrus.Error(err)
 				continue
@@ -152,17 +170,26 @@ func main() {
 			fmt.Printf("definition: %s\n", defs)
 		}
 	}
+
 }
 
-func displayDefinition(defs ...string) (string, error) {
+// displayDefinition should fit definitions into a window
+func displayDefinition(logger *log.Logger, lineLimit int, defs ...string) (string, error) {
 	var buf strings.Builder
 	var err error
 	_, err = buf.WriteRune('\n')
 	if err != nil {
 		return buf.String(), err
 	}
+	lineCount := 0
 	for i, def := range defs {
 		if len(def) > 0 {
+			lineCount += strings.Count(def, "\n") + len(def)/gput.Cols() + 1
+			logger.Logrus.Debugln(lineCount, lineLimit)
+			if lineCount > lineLimit {
+				lineCount -= strings.Count(def, "\n") + len(def)/gput.Cols() + 1
+				continue
+			}
 			_, err = buf.WriteString(strconv.Itoa(i + 1))
 			if err != nil {
 				break
@@ -171,11 +198,11 @@ func displayDefinition(defs ...string) (string, error) {
 			if err != nil {
 				break
 			}
-			_, err = buf.WriteString("\t")
+			_, err = buf.WriteString("\t\n")
 			if err != nil {
 				break
 			}
-			_, err = buf.WriteString(strings.ReplaceAll(def, "\n", "\n\t"))
+			_, err = buf.WriteString(def)
 			if err != nil {
 				break
 			}

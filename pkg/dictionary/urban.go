@@ -5,7 +5,7 @@ import (
 
 	"github.com/s8508235/tui-dictionary/pkg/log"
 
-	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/v2"
 )
 
 const urbanURL = "https://www.urbandictionary.com/define.php?term=%s"
