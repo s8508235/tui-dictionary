@@ -5,10 +5,8 @@ go 1.15
 require (
 	github.com/aaaton/golem/v4 v4.0.1
 	github.com/aaaton/golem/v4/dicts/en v1.0.1
-	github.com/codeskyblue/go-sh v0.0.0-20200712050446-30169cf553fe // indirect
 	github.com/gocolly/colly/v2 v2.1.0
 	github.com/keepeye/logrus-filename v0.0.0-20190711075016-ce01a4391dd1
-	github.com/maxmclau/gput v0.0.0-20160308214339-ebaca00f693d
 	github.com/sirupsen/logrus v1.8.1
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.6.1 // indirect
