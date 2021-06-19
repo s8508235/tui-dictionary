@@ -127,6 +127,7 @@ func main() {
 			logger.Logrus.Errorln("Fail to ask", err)
 			os.Exit(1)
 		}
+		inputWord = strings.TrimSuffix(inputWord, "\r")
 		if inputWord == "cls" {
 			if err := tools.Clear(); err != nil {
 				logger.Logrus.Errorln("Fail to ask", err)
