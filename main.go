@@ -8,11 +8,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/aaaton/golem/v4"
 	"github.com/aaaton/golem/v4/dicts/en"
-	"github.com/maxmclau/gput"
 	"github.com/s8508235/tui-dictionary/model"
 	"github.com/s8508235/tui-dictionary/pkg/database"
 	"github.com/s8508235/tui-dictionary/pkg/dictionary"
@@ -37,7 +35,12 @@ func main() {
 	target := strings.ToLower(strings.ReplaceAll(cfg.Section("").Key("target").String(), " ", "-"))
 	screenLines := cfg.Section("").Key("screen_lines").MustInt()
 	if screenLines == 0 {
-		screenLines = gput.Lines()
+		lines, err := tools.Lines()
+		if err != nil {
+			logger.Logrus.Errorln("Fail to get terminal info", err)
+			os.Exit(1)
+		}
+		screenLines = lines
 	}
 
 	logLevel := cfg.Section("").Key("level").String()
@@ -89,7 +92,7 @@ func main() {
 		os.Exit(1)
 	}
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGTSTP)
+	signal.Notify(sigs, os.Interrupt)
 
 	query := "word"
 
@@ -115,7 +118,6 @@ func main() {
 		})
 		switch err {
 		case nil:
-			break
 		case errWord:
 			continue
 		case input.ErrInterrupted:
@@ -126,9 +128,17 @@ func main() {
 			os.Exit(1)
 		}
 		if inputWord == "cls" {
-			tools.CallClear()
+			if err := tools.Clear(); err != nil {
+				logger.Logrus.Errorln("Fail to ask", err)
+				continue
+			}
 			starter()
 			continue
+		}
+		cols, err := tools.Cols()
+		if err != nil {
+			logger.Logrus.Errorln("Fail to get terminal info", err)
+			os.Exit(1)
 		}
 		searchWord := lemmatizer.Lemma(inputWord)
 		logger.Logrus.Debugln("going to search", searchWord)
@@ -143,7 +153,7 @@ func main() {
 				logger.Logrus.Errorln("Search error:", err)
 				os.Exit(1)
 			}
-			defs, err := displayDefinition(logger, screenLines, results...)
+			defs, err := displayDefinition(logger, screenLines, cols, results...)
 			if err != nil {
 				logger.Logrus.Error(err)
 				continue
@@ -162,7 +172,7 @@ func main() {
 				logger.Logrus.Error(err)
 				continue
 			}
-			defs, err := displayDefinition(logger, screenLines, results...)
+			defs, err := displayDefinition(logger, screenLines, cols, results...)
 			if err != nil {
 				logger.Logrus.Error(err)
 				continue
@@ -174,9 +184,10 @@ func main() {
 }
 
 // displayDefinition should fit definitions into a window
-func displayDefinition(logger *log.Logger, lineLimit int, defs ...string) (string, error) {
+func displayDefinition(logger *log.Logger, lineLimit, colNum int, defs ...string) (string, error) {
 	var buf strings.Builder
 	var err error
+
 	_, err = buf.WriteRune('\n')
 	if err != nil {
 		return buf.String(), err
@@ -184,10 +195,10 @@ func displayDefinition(logger *log.Logger, lineLimit int, defs ...string) (strin
 	lineCount := 0
 	for i, def := range defs {
 		if len(def) > 0 {
-			lineCount += strings.Count(def, "\n") + len(def)/gput.Cols() + 1
+			lineCount += strings.Count(def, "\n") + len(def)/colNum + 1
 			logger.Logrus.Debugln(lineCount, lineLimit)
 			if lineCount > lineLimit {
-				lineCount -= strings.Count(def, "\n") + len(def)/gput.Cols() + 1
+				lineCount -= strings.Count(def, "\n") + len(def)/colNum + 1
 				continue
 			}
 			_, err = buf.WriteString(strconv.Itoa(i + 1))
@@ -198,11 +209,11 @@ func displayDefinition(logger *log.Logger, lineLimit int, defs ...string) (strin
 			if err != nil {
 				break
 			}
-			_, err = buf.WriteString("\t\n")
+			_, err = buf.WriteString("\n\t")
 			if err != nil {
 				break
 			}
-			_, err = buf.WriteString(def)
+			_, err = buf.WriteString(strings.ReplaceAll(def, "\n", "\n\t"))
 			if err != nil {
 				break
 			}

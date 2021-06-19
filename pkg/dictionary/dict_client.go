@@ -22,7 +22,7 @@ func (d *DICTClient) Search(word string) ([]string, error) {
 	defs, err := d.Client.Define(d.DictionaryPrefix, word)
 	if err != nil {
 		if errors.Is(err, syscall.EPIPE) {
-			d.Logger.Logrus.Infoln("reconnect to dict.org")
+			d.Logger.Logrus.Infoln("=== reconnect to dict.org ===")
 			// reconnect
 			client, err := dict.Dial(d.network, d.addr)
 			if err != nil {

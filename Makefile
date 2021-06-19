@@ -1,13 +1,20 @@
 APP      = ./bin/dict
 TARGET = $$(awk -F "=" '/target/ {print $$2}' app.ini)
 ##@ Run
+
 .PHONY: run
 run: ## run server
 	go run main.go
+
 ##@ Build
-.PHONY: build
-build: ## build server binary
-	go build -o ${APP} main.go
+.PHONY: build build-windows
+
+build: ## build server binary for linux
+	GOOS=linux go build -o ${APP} main.go
+	
+# https://stackoverflow.com/questions/49078510/trouble-compiling-windows-dll-using-golang-1-10
+build-windows: ## build server binary for windows
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build -o ${APP}.exe main.go
 
 target:  ## Show version
 	echo ${TARGET}
@@ -18,6 +25,7 @@ lint-install:
 
 test-lint:
 	./bin/golangci-lint run ./...
+
 ##@ Help
 
 .PHONY: help
