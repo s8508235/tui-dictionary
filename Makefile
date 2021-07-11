@@ -1,11 +1,13 @@
 APP      = ./bin/dict
 TARGET = $$(awk -F "=" '/target/ {print $$2}' app.ini)
+ARGS := test
 ##@ Run
 
 .PHONY: run
 run: ## run server
 	go run main.go
-
+search: ## single search
+	go run client/main.go $(ARGS)
 ##@ Build
 .PHONY: build build-windows
 

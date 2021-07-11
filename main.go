@@ -3,8 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/aaaton/golem/v4"
@@ -18,10 +16,6 @@ import (
 	"github.com/vmihailenco/msgpack"
 	"gopkg.in/ini.v1"
 	"gorm.io/gorm"
-)
-
-var (
-	errWord = errors.New("should be a word")
 )
 
 func main() {
@@ -42,7 +36,7 @@ func main() {
 	}
 	starter := func() {
 		fmt.Println("Target:", target)
-		fmt.Println("===== Press q to exit =====")
+		fmt.Println("===== Input q to exit =====")
 	}
 	starter()
 	db, err := database.NewSqlLiteConnection(target, logger)
@@ -71,7 +65,7 @@ func main() {
 		logger.Logrus.Errorln("Fail to init lemmatizer:", err)
 		return
 	}
-	dict, err := dictionary.NewMyPreferDictionary(logger, "tcp", "dict.dict.org:2628", "!")
+	dict, err := dictionary.NewMyPreferDictionary(logger)
 	if err != nil {
 		logger.Logrus.Errorln("Fail to init dictionary:", err)
 		return
@@ -81,10 +75,10 @@ func main() {
 
 	for {
 		inputWord := prompt.Input(query, completer)
-		err := validate(inputWord)
+		err := tools.WordValidate(inputWord)
 		switch err {
 		case nil:
-		case errWord:
+		case tools.ErrWord:
 			logger.Logrus.Errorln("Wrong format:", err)
 			continue
 		default:
@@ -127,7 +121,7 @@ func main() {
 				logger.Logrus.Errorln("Search error:", err)
 				return
 			}
-			defs, err := displayDefinition(logger, lines, cols, results...)
+			defs, err := tools.DisplayDefinition(logger, lines, cols, results...)
 			if err != nil {
 				logger.Logrus.Error(err)
 				continue
@@ -146,7 +140,7 @@ func main() {
 				logger.Logrus.Error(err)
 				continue
 			}
-			defs, err := displayDefinition(logger, lines, cols, results...)
+			defs, err := tools.DisplayDefinition(logger, lines, cols, results...)
 			if err != nil {
 				logger.Logrus.Error(err)
 				continue
@@ -157,64 +151,7 @@ func main() {
 
 }
 
-// displayDefinition should fit definitions into a window
-func displayDefinition(logger *log.Logger, lineLimit, colNum int, defs ...string) (string, error) {
-	var buf strings.Builder
-	var err error
-
-	_, err = buf.WriteRune('\n')
-	if err != nil {
-		return buf.String(), err
-	}
-	lineCount := 0
-	for i, def := range defs {
-		if len(def) > 0 {
-			lineCount += strings.Count(def, "\n") + len(def)/colNum + 1
-			logger.Logrus.Debugln(lineCount, lineLimit)
-			if lineCount > lineLimit {
-				lineCount -= strings.Count(def, "\n") + len(def)/colNum + 1
-				continue
-			}
-			_, err = buf.WriteString(strconv.Itoa(i + 1))
-			if err != nil {
-				break
-			}
-			_, err = buf.WriteString(". ")
-			if err != nil {
-				break
-			}
-			_, err = buf.WriteString("\n\t")
-			if err != nil {
-				break
-			}
-			_, err = buf.WriteString(strings.ReplaceAll(def, "\n", "\n\t"))
-			if err != nil {
-				break
-			}
-			_, err = buf.WriteRune('\n')
-			if err != nil {
-				break
-			}
-		} else {
-			break
-		}
-	}
-	return buf.String(), err
-}
-
 func completer(d prompt.Document) []prompt.Suggest {
 	s := []prompt.Suggest{}
 	return prompt.FilterHasPrefix(s, d.GetWordBeforeCursor(), true)
-}
-
-func validate(s string) error {
-	match, err := regexp.MatchString(`(?s)^[a-zA-Z\s]+$`, s)
-	if err != nil {
-		return err
-	}
-	if match {
-		return nil
-	} else {
-		return errWord
-	}
 }
