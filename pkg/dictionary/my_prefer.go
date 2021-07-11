@@ -1,11 +1,6 @@
 package dictionary
 
-import (
-	"github.com/s8508235/tui-dictionary/pkg/log"
-)
-
 type MyPrefer struct {
-	Logger       *log.Logger
 	Dictionaries []Interface
 }
 
@@ -20,6 +15,10 @@ func (m *MyPrefer) Search(word string) ([]string, error) {
 			return result, err
 		}
 		result = append(result, r...)
+	}
+
+	if len(result) == 0 {
+		return result, ErrorNoDef
 	}
 	return result, nil
 }

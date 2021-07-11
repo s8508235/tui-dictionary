@@ -39,9 +39,8 @@ func (c *WebDictionaryCrawler) Search(word string) ([]string, error) {
 
 	err := crawler.Visit(c.SearchURL(word))
 
-	if err == nil && count == 0 {
+	if count == 0 {
 		return result, ErrorNoDef
 	}
-
 	return result, err
 }

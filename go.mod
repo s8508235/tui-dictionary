@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/aaaton/golem/v4 v4.0.1
 	github.com/aaaton/golem/v4/dicts/en v1.0.1
+	github.com/briandowns/spinner v1.16.0
 	github.com/c-bata/go-prompt v0.2.6
 	github.com/gocolly/colly/v2 v2.1.0
 	github.com/keepeye/logrus-filename v0.0.0-20190711075016-ce01a4391dd1

@@ -79,7 +79,6 @@ func NewMyPreferDictionary(logger *log.Logger) (*MyPrefer, error) {
 	urban := NewUrbanDictionary(logger)
 	dictionaries := []Interface{learner, collins, urban}
 	return &MyPrefer{
-		Logger:       logger,
 		Dictionaries: dictionaries,
 	}, nil
 }

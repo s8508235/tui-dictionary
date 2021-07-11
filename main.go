@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aaaton/golem/v4"
 	"github.com/aaaton/golem/v4/dicts/en"
+	"github.com/briandowns/spinner"
 	"github.com/c-bata/go-prompt"
 	"github.com/s8508235/tui-dictionary/model"
 	"github.com/s8508235/tui-dictionary/pkg/database"
@@ -37,6 +40,7 @@ func main() {
 	starter := func() {
 		fmt.Println("Target:", target)
 		fmt.Println("===== Input q to exit =====")
+		fmt.Println("===== Input t to toggle hidden mode =====")
 	}
 	starter()
 	db, err := database.NewSqlLiteConnection(target, logger)
@@ -72,8 +76,12 @@ func main() {
 	}
 
 	query := "Word: "
-
+	var buf bytes.Buffer
+	var flag bool
+	s := spinner.New(spinner.CharSets[43], 100*time.Millisecond) // Build our new spinner
+	s.FinalMSG = "\r"
 	for {
+		s.Stop()
 		inputWord := prompt.Input(query, completer)
 		err := tools.WordValidate(inputWord)
 		switch err {
@@ -97,7 +105,15 @@ func main() {
 		case "q", "Q":
 			fmt.Println()
 			return
+		case "t", "T":
+			flag = !flag
+			if !flag {
+				fmt.Print(buf.String())
+				buf.Reset()
+			}
+			continue
 		}
+		s.Start()
 		cols, err := tools.Cols()
 		if err != nil {
 			logger.Logrus.Errorln("Fail to get terminal info:", err)
@@ -126,7 +142,13 @@ func main() {
 				logger.Logrus.Error(err)
 				continue
 			}
-			fmt.Printf("definition: %s\n", defs)
+			s.Stop()
+			if flag {
+				fmt.Fprintf(&buf, "definition of %s: %s\n", inputWord, defs)
+
+			} else {
+				fmt.Printf("definition of %s: %s\n", inputWord, defs)
+			}
 			b, err := msgpack.Marshal(results)
 			if err != nil {
 				logger.Logrus.Error(err)
@@ -145,7 +167,12 @@ func main() {
 				logger.Logrus.Error(err)
 				continue
 			}
-			fmt.Printf("definition: %s\n", defs)
+			s.Stop()
+			if flag {
+				fmt.Fprintf(&buf, "definition of %s: %s\n", inputWord, defs)
+			} else {
+				fmt.Printf("definition of %s: %s\n", inputWord, defs)
+			}
 		}
 	}
 
