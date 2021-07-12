@@ -124,6 +124,7 @@ func main() {
 			logger.Logrus.Errorln("Fail to get terminal info:", err)
 			return
 		}
+		inputWord = strings.TrimSpace(inputWord)
 		searchWord := lemmatizer.Lemma(inputWord)
 		logger.Logrus.Debugln("going to search", searchWord)
 		var word model.Dictionary
