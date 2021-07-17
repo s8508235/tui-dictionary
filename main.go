@@ -29,14 +29,38 @@ func main() {
 		logger.Logrus.Errorln("Fail to read file:", err)
 		return
 	}
-	target := strings.ToLower(strings.ReplaceAll(cfg.Section("").Key("target").String(), " ", "-"))
+	targetsSection := cfg.Section("").Key("targets")
+	targets := targetsSection.Strings(",")
+	p := prompt.New(func(t string) {},
+		targetsCompleter(targets),
+		prompt.OptionPrefix("target: "))
+	target := p.Input()
 
 	logLevel := cfg.Section("").Key("level").String()
+	if logLevel == "" {
+		logLevel = "info"
+	}
 	logger.SetLogLevel(logLevel)
 
 	if len(target) == 0 {
 		target = "target"
 	}
+
+	existInSetting := false
+	for _, t := range targets {
+		if t == target {
+			existInSetting = true
+		}
+	}
+	if !existInSetting {
+		var builder strings.Builder
+		builder.WriteString(strings.Join(targets, ","))
+		builder.WriteString(",")
+		builder.WriteString(strings.ReplaceAll(target, "-", ""))
+		targetsSection.SetValue(builder.String())
+		cfg.SaveTo("app.ini")
+	}
+	target = strings.ToLower(strings.ReplaceAll(target, " ", "-"))
 	starter := func() {
 		fmt.Println("Target:", target)
 		fmt.Println("===== Input q to exit =====")
@@ -82,7 +106,7 @@ func main() {
 	s.FinalMSG = "\r"
 	for {
 		s.Stop()
-		inputWord := prompt.Input(query, completer)
+		inputWord := prompt.Input(query, inputWordCompleter)
 		err := tools.WordValidate(inputWord)
 		switch err {
 		case nil:
@@ -130,6 +154,7 @@ func main() {
 		var word model.Dictionary
 		dbResult := db.Where("word = ?", searchWord).First(&word)
 		if errors.Is(dbResult.Error, gorm.ErrRecordNotFound) {
+			logger.Logrus.Debugf("%s not in db", searchWord)
 			results, err := dict.Search(searchWord)
 			if err == dictionary.ErrorNoDef {
 				fmt.Printf("no definition for: %s\n", searchWord)
@@ -179,7 +204,17 @@ func main() {
 
 }
 
-func completer(d prompt.Document) []prompt.Suggest {
+func inputWordCompleter(d prompt.Document) []prompt.Suggest {
 	s := []prompt.Suggest{}
 	return prompt.FilterHasPrefix(s, d.GetWordBeforeCursor(), true)
+}
+
+func targetsCompleter(targets []string) func(d prompt.Document) []prompt.Suggest {
+	return func(d prompt.Document) []prompt.Suggest {
+		s := make([]prompt.Suggest, 0, len(targets))
+		for _, target := range targets {
+			s = append(s, prompt.Suggest{Text: target})
+		}
+		return prompt.FilterHasPrefix(s, d.GetWordBeforeCursor(), true)
+	}
 }

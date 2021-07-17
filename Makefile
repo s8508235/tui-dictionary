@@ -7,7 +7,7 @@ ARGS := test
 run: ## run server
 	go run main.go
 search: ## single search
-	go run client/main.go $(ARGS)
+	go run client/my_prefer/main.go $(ARGS)
 ##@ Build
 .PHONY: build build-windows
 

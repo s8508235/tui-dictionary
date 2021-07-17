@@ -14,14 +14,14 @@ func DisplayDefinition(logger *log.Logger, lineLimit, colNum int, defs ...string
 
 	_, err = buf.WriteRune('\n')
 	if err != nil {
-		return buf.String(), err
+		return "", err
 	}
 	lineCount := 0
 	for i, def := range defs {
 		if len(def) > 0 {
 			lineCount += strings.Count(def, "\n") + len(def)/colNum + 1
 			logger.Logrus.Debugln(lineCount, lineLimit)
-			if lineCount > lineLimit {
+			if lineCount > lineLimit && buf.Len() > 1 {
 				lineCount -= strings.Count(def, "\n") + len(def)/colNum + 1
 				continue
 			}
