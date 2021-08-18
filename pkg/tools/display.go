@@ -16,13 +16,16 @@ func DisplayDefinition(logger *log.Logger, lineLimit, colNum int, defs ...string
 	if err != nil {
 		return "", err
 	}
-	lineCount := 0
+	// for definition of ... line and ending \n
+	lineCount := 2
 	for i, def := range defs {
 		if len(def) > 0 {
-			lineCount += strings.Count(def, "\n") + len(def)/colNum + 1
-			logger.Logrus.Debugln(lineCount, lineLimit)
-			if lineCount > lineLimit && buf.Len() > 1 {
-				lineCount -= strings.Count(def, "\n") + len(def)/colNum + 1
+			// +1 for def lines +1 for line number
+			incr := strings.Count(def, "\n") + len(def)/colNum + 1 + 1
+			lineCount += incr
+			logger.Logrus.Debugln(i+1, lineCount, lineLimit, incr, def)
+			if lineCount >= lineLimit && buf.Len() > 1 {
+				lineCount -= incr
 				continue
 			}
 			_, err = buf.WriteString(strconv.Itoa(i + 1))

@@ -55,7 +55,9 @@ func main() {
 	if !existInSetting {
 		var builder strings.Builder
 		builder.WriteString(strings.Join(targets, ","))
-		builder.WriteString(",")
+		if len(targets) > 0 {
+			builder.WriteString(",")
+		}
 		builder.WriteString(strings.ReplaceAll(target, "-", ""))
 		targetsSection.SetValue(builder.String())
 		cfg.SaveTo("app.ini")
