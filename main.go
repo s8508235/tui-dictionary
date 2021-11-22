@@ -60,7 +60,11 @@ func main() {
 		}
 		builder.WriteString(strings.ReplaceAll(target, "-", ""))
 		targetsSection.SetValue(builder.String())
-		cfg.SaveTo("app.ini")
+		if err := cfg.SaveTo("app.ini"); err != nil {
+			logger.Logrus.Errorln("Fail to save app.ini:", err)
+			logger.Logrus.Infoln("previous setting:", builder.String())
+			return
+		}
 	}
 	target = strings.ToLower(strings.ReplaceAll(target, " ", "-"))
 	starter := func() {

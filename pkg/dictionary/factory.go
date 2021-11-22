@@ -68,10 +68,13 @@ func NewDICTClient(logger *log.Logger, network, addr, prefix string) (*DICTClien
 	}, nil
 }
 
-func NewCollinsDictionary(logger *log.Logger) Interface {
+func NewCollinsDictionary(logger *log.Logger) (Interface, error) {
 	c := colly.NewCollector()
 	// don't want to cache anything since it should be a light query
-	c.SetStorage(&emptyStorage{})
+	if err := c.SetStorage(&emptyStorage{}); err != nil {
+		return nil, err
+	}
+
 	return &WebDictionaryCrawler{
 		Crawler: c,
 		Logger:  logger,
@@ -80,13 +83,15 @@ func NewCollinsDictionary(logger *log.Logger) Interface {
 		},
 		Selector:   collinsSelector,
 		SearchFunc: generalWebDictionarySearch,
-	}
+	}, nil
 }
 
-func NewUrbanDictionary(logger *log.Logger) Interface {
+func NewUrbanDictionary(logger *log.Logger) (Interface, error) {
 	c := colly.NewCollector()
 	// don't want to cache anything since it should be a light query
-	c.SetStorage(&emptyStorage{})
+	if err := c.SetStorage(&emptyStorage{}); err != nil {
+		return nil, err
+	}
 	return &WebDictionaryCrawler{
 		Crawler: c,
 		Logger:  logger,
@@ -95,13 +100,15 @@ func NewUrbanDictionary(logger *log.Logger) Interface {
 		},
 		Selector:   urbanSelector,
 		SearchFunc: generalWebDictionarySearch,
-	}
+	}, nil
 }
 
-func NewLearnerDictionary(logger *log.Logger) Interface {
+func NewLearnerDictionary(logger *log.Logger) (Interface, error) {
 	c := colly.NewCollector()
 	// don't want to cache anything since it should be a light query
-	c.SetStorage(&emptyStorage{})
+	if err := c.SetStorage(&emptyStorage{}); err != nil {
+		return nil, err
+	}
 	return &WebDictionaryCrawler{
 		Crawler: c,
 		Logger:  logger,
@@ -110,13 +117,22 @@ func NewLearnerDictionary(logger *log.Logger) Interface {
 		},
 		Selector:   learnerSelector,
 		SearchFunc: generalWebDictionarySearch,
-	}
+	}, nil
 }
 
 func NewMyPreferDictionary(logger *log.Logger) (*MyPrefer, error) {
-	learner := NewLearnerDictionary(logger)
-	collins := NewCollinsDictionary(logger)
-	urban := NewUrbanDictionary(logger)
+	learner, err := NewLearnerDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
+	collins, err := NewCollinsDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
+	urban, err := NewUrbanDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
 	dictionaries := []Interface{learner, collins, urban}
 	return &MyPrefer{
 		Dictionaries: dictionaries,
