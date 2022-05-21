@@ -120,7 +120,28 @@ func NewLearnerDictionary(logger *log.Logger) (Interface, error) {
 	}, nil
 }
 
+func NewWebsterDictionary(logger *log.Logger) (Interface, error) {
+	c := colly.NewCollector()
+	// don't want to cache anything since it should be a light query
+	if err := c.SetStorage(&emptyStorage{}); err != nil {
+		return nil, err
+	}
+	return &WebDictionaryCrawler{
+		Crawler: c,
+		Logger:  logger,
+		SearchURL: func(word string) string {
+			return fmt.Sprintf(websterURL, re.ReplaceAllString(word, "%20"))
+		},
+		Selector:   websterURLSelector,
+		SearchFunc: websterSearch,
+	}, nil
+}
+
 func NewMyPreferDictionary(logger *log.Logger) (*MyPrefer, error) {
+	webster, err := NewWebsterDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
 	learner, err := NewLearnerDictionary(logger)
 	if err != nil {
 		return nil, err
@@ -133,7 +154,7 @@ func NewMyPreferDictionary(logger *log.Logger) (*MyPrefer, error) {
 	if err != nil {
 		return nil, err
 	}
-	dictionaries := []Interface{learner, collins, urban}
+	dictionaries := []Interface{webster, learner, collins, urban}
 	return &MyPrefer{
 		Dictionaries: dictionaries,
 	}, nil
