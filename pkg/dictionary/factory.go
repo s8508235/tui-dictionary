@@ -6,7 +6,7 @@ import (
 	"regexp"
 
 	"github.com/gocolly/colly/v2"
-	"github.com/s8508235/tui-dictionary/pkg/log"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/dict"
 )
 

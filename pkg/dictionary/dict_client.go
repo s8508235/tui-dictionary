@@ -5,7 +5,7 @@ import (
 	"net/textproto"
 	"syscall"
 
-	"github.com/s8508235/tui-dictionary/pkg/log"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/dict"
 )
 
@@ -22,7 +22,7 @@ func (d *DICTClient) Search(word string) ([]string, error) {
 	defs, err := d.Client.Define(d.DictionaryPrefix, word)
 	if err != nil {
 		if errors.Is(err, syscall.EPIPE) {
-			d.Logger.Logrus.Infoln("=== reconnect to dict.org ===")
+			d.Logger.Infoln("=== reconnect to dict.org ===")
 			// reconnect
 			client, err := dict.Dial(d.network, d.addr)
 			if err != nil {
@@ -33,7 +33,7 @@ func (d *DICTClient) Search(word string) ([]string, error) {
 		}
 		textprotoError, valid := err.(*textproto.Error)
 		if !valid || textprotoError.Code != 552 {
-			d.Logger.Logrus.Error(err)
+			d.Logger.Error(err)
 			return result, err
 		}
 		return result, ErrorNoDef

@@ -1,5 +1,5 @@
-Use web server first
+Use web server
 Port to windows/linux
 Implement dictionary.Interface to add dictionary
-Sqlite with msgpack
-collins, dict.org, urban as source
+webster, collins, dict.org, urban as source
+Generate text file for quizlet

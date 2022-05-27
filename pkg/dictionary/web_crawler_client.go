@@ -1,7 +1,7 @@
 package dictionary
 
 import (
-	"github.com/s8508235/tui-dictionary/pkg/log"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/gocolly/colly/v2"
 	"github.com/gocolly/colly/v2/extensions"
@@ -26,15 +26,15 @@ func (c *WebDictionaryCrawler) Search(word string) ([]string, error) {
 	crawler.OnHTML(c.Selector, c.SearchFunc(&result, &count))
 
 	crawler.OnError(func(_ *colly.Response, err error) {
-		c.Logger.Logrus.Debugln("Something went wrong:", err)
+		c.Logger.Debugln("Something went wrong:", err)
 	})
 
 	crawler.OnRequest(func(r *colly.Request) {
-		c.Logger.Logrus.Debugln("Visiting", r.URL.String())
+		c.Logger.Debugln("Visiting", r.URL.String())
 	})
 
 	crawler.OnScraped(func(r *colly.Response) {
-		c.Logger.Logrus.Debugln("Finished", r.Request.URL.String())
+		c.Logger.Debugln("Finished", r.Request.URL.String())
 	})
 
 	err := crawler.Visit(c.SearchURL(word))
