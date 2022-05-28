@@ -126,8 +126,8 @@ func main() {
 			logger.Info("last byte: <", lastByte, ">")
 		}
 	}
-	// p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target), tea.WithAltScreen())
-	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target))
+	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target), tea.WithAltScreen())
+	// p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target))
 
 	if err := p.Start(); err != nil {
 		logger.Fatal(err)
