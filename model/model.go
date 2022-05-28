@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/s8508235/tui-dictionary/pkg/dictionary"
+	"github.com/s8508235/tui-dictionary/pkg/tools"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,7 +30,7 @@ type Dictionary struct {
 	Selected map[int]struct{} // which to-do items are selected
 	// internal
 	searchWord string
-	emptyWarn  string
+	warnMsg    string
 	state      dictionaryState
 	// dependencies
 	Logger     *logrus.Logger
@@ -52,6 +53,20 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.Type {
 			case tea.KeyEnter:
 				inputWord := strings.TrimSpace(m.SearchWord.Value())
+				err := tools.WordValidate(inputWord)
+				switch err {
+				case nil:
+				case tools.ErrWord:
+					m.warnMsg = fmt.Sprintf("wrong format of input: %s", inputWord)
+					shouldCursorReset := m.SearchWord.Reset()
+					if shouldCursorReset {
+						m.SearchWord.Focus()
+					}
+					return m, textinput.Blink
+				default:
+					m.Logger.Errorln("Fail to ask:", err)
+					return m, tea.Quit
+				}
 				m.searchWord = m.Lemmatizer.Lemma(inputWord)
 				m.Logger.Debugln("going to search", m.searchWord)
 				m.Spinner.Start()
@@ -76,6 +91,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SearchWord.Blur()
 				m.Choices = results
 				m.Cursor = 0
+				m.warnMsg = ""
 				return m, nil
 			case tea.KeyCtrlC, tea.KeyEsc:
 				return m, tea.Quit
@@ -92,7 +108,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "z", "Z":
 				if len(m.Selected) == 0 {
-					m.emptyWarn = "Please at least select one definition"
+					m.warnMsg = "Please at least select one definition"
 					return m, nil
 				}
 				flushed := make([]string, 0, len(m.Selected))
@@ -146,12 +162,15 @@ func (m Dictionary) View() string {
 	var s string
 	switch m.state {
 	case dictionarySearch:
-		return fmt.Sprintf("Target: %s\nWord: %s [Press enter to search, Ctrl+C or Esc to exit]", m.Target, m.SearchWord.View())
+		if len(m.warnMsg) != 0 {
+			s += fmt.Sprintf("\033[31m%s\033[0m\n\n", m.warnMsg)
+		}
+		s += fmt.Sprintf("Target: %s\nWord: %s [Press enter to search, Ctrl+C or Esc to exit]", m.Target, m.SearchWord.View())
 	case dictionarySelectDef:
 		s += fmt.Sprintf("Target: %s\n", m.Target)
-		s += fmt.Sprintf("Choose one or more definitions for %s:\n\n", m.searchWord)
-		if len(m.emptyWarn) != 0 {
-			s += fmt.Sprintf("\n%s\n\n", m.emptyWarn)
+		s += fmt.Sprintf("Choose one or more definitions for \033[32m%s\033[0m:\n\n", m.searchWord)
+		if len(m.warnMsg) != 0 {
+			s += fmt.Sprintf("\033[31m%s\033[0m\n\n", m.warnMsg)
 		}
 		for i, choice := range m.Choices {
 			// Is the cursor pointing at this choice?
@@ -177,7 +196,7 @@ func (m Dictionary) View() string {
 }
 
 func (m Dictionary) backToSearch() Dictionary {
-	m.emptyWarn = ""
+	m.warnMsg = ""
 	m.Selected = make(map[int]struct{})
 	m.Choices = make([]string, 0)
 	m.Cursor = 0
