@@ -13,5 +13,5 @@ func Exit() {
 	rawModeOff.Stdin = os.Stdin
 	_ = rawModeOff.Run()
 	//nolint
-	rawModeOff.Wait()
+	rawModeOff.Wait() //#nosec G104
 }

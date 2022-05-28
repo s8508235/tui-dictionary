@@ -81,6 +81,7 @@ func main() {
 		prompt.OptionShowCompletionAtStart(),
 		prompt.OptionCompletionOnDown(),
 	)
+	tools.Exit()
 	shouldPadding := false
 	if _, err := os.Stat(target); err == nil {
 		logger.Debugln("target exist")

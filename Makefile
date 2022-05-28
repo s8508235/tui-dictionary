@@ -1,4 +1,4 @@
-APP      = ./bin/dict
+APP      = ./bin/tui-dictionary
 ARGS := test
 ##@ Run
 
@@ -13,9 +13,8 @@ search: ## single search
 build: ## build server binary for linux
 	GOOS=linux go build -o ${APP} main.go
 	
-# https://stackoverflow.com/questions/49078510/trouble-compiling-windows-dll-using-golang-1-10
 build-windows: ## build server binary for windows
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build -o ${APP}.exe main.go
+	GOOS=windows GOARCH=amd64 go build -o ${APP}.exe main.go
 
 lint-install: 
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.46.2
