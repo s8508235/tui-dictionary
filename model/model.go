@@ -72,7 +72,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Spinner.Start()
 				results, err := m.Dictionary.Search(m.searchWord)
 				if err == dictionary.ErrorNoDef {
-					m.Logger.Debugf("no definition for: %s\n", m.searchWord)
+					m.warnMsg = fmt.Sprintf("no definition for: %s\n", m.searchWord)
 					// reset search state
 					shouldCursorReset := m.SearchWord.Reset()
 					if shouldCursorReset {
@@ -124,21 +124,10 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// These keys should exit the program.
 			case "ctrl+c", "q", "Q":
 				return m, tea.Quit
-
-			// The "up" and "k" keys move the cursor up
 			case "up", "k":
-				if m.Cursor > 0 {
-					m.Cursor--
-				}
-
-			// The "down" and "j" keys move the cursor down
+				m.Cursor = (m.Cursor - 1 + len(m.Choices)) % len(m.Choices)
 			case "down", "j":
-				if m.Cursor < len(m.Choices)-1 {
-					m.Cursor++
-				}
-
-			// The "enter" key and the spacebar (a literal space) toggle
-			// the selected state for the item that the cursor is pointing at.
+				m.Cursor = (m.Cursor + 1 + len(m.Choices)) % len(m.Choices)
 			case "enter", " ", "x", "X":
 				_, ok := m.Selected[m.Cursor]
 				if ok {
@@ -162,10 +151,10 @@ func (m Dictionary) View() string {
 	var s string
 	switch m.state {
 	case dictionarySearch:
-		if len(m.warnMsg) != 0 {
-			s += fmt.Sprintf("\033[31m%s\033[0m\n\n", m.warnMsg)
-		}
 		s += fmt.Sprintf("Target: %s\nWord: %s [Press enter to search, Ctrl+C or Esc to exit]", m.Target, m.SearchWord.View())
+		if len(m.warnMsg) != 0 {
+			s += fmt.Sprintf("\n\033[31m%s\033[0m\n", m.warnMsg)
+		}
 	case dictionarySelectDef:
 		s += fmt.Sprintf("Target: %s\n", m.Target)
 		s += fmt.Sprintf("Choose one or more definitions for \033[32m%s\033[0m:\n\n", m.searchWord)
