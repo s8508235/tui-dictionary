@@ -44,12 +44,12 @@ func (s *emptyStorage) Close() error {
 
 func generalWebDictionarySearch(results *[]string, counter *int) func(e *colly.HTMLElement) {
 	return func(e *colly.HTMLElement) {
-		if *counter < 3 {
-			*results = append(*results, e.Text)
-		} else {
-			return
-		}
-		*counter += 1
+		// if *counter < 3 {
+		*results = append(*results, e.Text)
+		// } else {
+		// 	return
+		// }
+		// *counter += 1
 	}
 }
 
@@ -69,20 +69,27 @@ func NewDICTClient(logger *log.Logger, network, addr, prefix string) (*DICTClien
 }
 
 func NewCollinsDictionary(logger *log.Logger) (Interface, error) {
-	c := colly.NewCollector()
-	// don't want to cache anything since it should be a light query
-	if err := c.SetStorage(&emptyStorage{}); err != nil {
-		return nil, err
-	}
 
-	return &WebDictionaryCrawler{
-		Crawler: c,
-		Logger:  logger,
+	// return &ChromeDPCrawler{
+	// 	Context: context.Background(),
+	// 	Logger:  logger,
+	// 	SearchURL: func(word string) string {
+	// 		return fmt.Sprintf(collinsURL, re.ReplaceAllString(word, "-"))
+	// 	},
+	// 	Selector: collinsSelector,
+	// }, nil
+	// c := colly.NewCollector()
+	// // don't want to cache anything since it should be a light query
+	// if err := c.SetStorage(&emptyStorage{}); err != nil {
+	// 	return nil, err
+	// }
+	return &CollinsCrawler{
+		// Crawler: c,
+		Logger: logger,
 		SearchURL: func(word string) string {
 			return fmt.Sprintf(collinsURL, re.ReplaceAllString(word, "-"))
 		},
-		Selector:   collinsSelector,
-		SearchFunc: generalWebDictionarySearch,
+		Selector: collinsSelector,
 	}, nil
 }
 
@@ -154,7 +161,7 @@ func NewMyPreferDictionary(logger *log.Logger) (*MyPrefer, error) {
 	if err != nil {
 		return nil, err
 	}
-	dictionaries := []Interface{webster, learner, collins, urban}
+	dictionaries := []Interface{collins, webster, learner, urban}
 	return &MyPrefer{
 		Dictionaries: dictionaries,
 	}, nil

@@ -7,8 +7,6 @@ import (
 	"github.com/gocolly/colly/v2/extensions"
 )
 
-// const webDictionaryCrawlerURL = "https://www.collinsdictionary.com/dictionary/english/%s"
-
 type WebDictionaryCrawler struct {
 	Selector   string
 	SearchURL  func(string) string
@@ -23,6 +21,7 @@ func (c *WebDictionaryCrawler) Search(word string) ([]string, error) {
 	extensions.RandomUserAgent(crawler)
 	result := make([]string, 0, 3)
 	count := 0
+
 	crawler.OnHTML(c.Selector, c.SearchFunc(&result, &count))
 
 	crawler.OnError(func(_ *colly.Response, err error) {
