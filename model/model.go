@@ -9,6 +9,7 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/s8508235/tui-dictionary/pkg/dictionary"
 	"github.com/s8508235/tui-dictionary/pkg/tools"
 	"github.com/sirupsen/logrus"
@@ -26,13 +27,15 @@ type Dictionary struct {
 	SearchWord textinput.Model
 	// selection
 	Choices  []string         // items on the to-do list
-	Cursor   int              // which to-do list item our cursor is pointing at
+	cursor   int              // which to-do list item our cursor is pointing at
 	Selected map[int]struct{} // which to-do items are selected
 	// internal
 	searchWord string
 	warnMsg    string
 	state      dictionaryState
 	err        error
+	height     int
+	width      int
 	// dependencies
 	Logger     *logrus.Logger
 	OutFile    *os.File
@@ -47,6 +50,13 @@ func (m Dictionary) Init() tea.Cmd {
 
 func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	switch msg := msg.(type) {
+	// init/update for width/height
+	case tea.WindowSizeMsg:
+		m.height = msg.Height
+		m.width = msg.Width
+		return m, nil
+	}
 	switch m.state {
 	case dictionarySearch:
 		switch msg := msg.(type) {
@@ -76,6 +86,32 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.warnMsg = ""
 				m.Logger.Debugln("going to search", m.searchWord)
 				// if stuck, no way to return. have to be more responsive
+				/* test result
+				results := []string{
+					"a",
+					"b",
+					"c",
+					"d",
+					"e",
+					"f",
+					"g",
+					"h",
+					"i",
+					"j",
+					"k",
+					"l",
+					"m",
+					"n",
+					"o",
+					"p",
+					"q",
+					"r",
+					"s",
+					"t",
+					"u",
+					"",
+				}
+				*/
 				m.Spinner.Start()
 				results, err := m.Dictionary.Search(m.searchWord)
 				if err == dictionary.ErrorNoDef {
@@ -97,7 +133,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.state = dictionarySelectDef
 				m.SearchWord.Blur()
 				m.Choices = results
-				m.Cursor = 0
+				m.cursor = 0
 				return m, nil
 			case tea.KeyCtrlC, tea.KeyEsc:
 				return m, tea.Quit
@@ -131,15 +167,15 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "ctrl+c", "ctrl+C":
 				return m, tea.Quit
 			case "up", "w", "W":
-				m.Cursor = (m.Cursor - 1 + len(m.Choices)) % len(m.Choices)
+				m.cursor = (m.cursor - 1 + len(m.Choices)) % len(m.Choices)
 			case "down", "s", "S":
-				m.Cursor = (m.Cursor + 1 + len(m.Choices)) % len(m.Choices)
+				m.cursor = (m.cursor + 1 + len(m.Choices)) % len(m.Choices)
 			case "enter", " ", "x", "X":
-				_, ok := m.Selected[m.Cursor]
+				_, ok := m.Selected[m.cursor]
 				if ok {
-					delete(m.Selected, m.Cursor)
+					delete(m.Selected, m.cursor)
 				} else {
-					m.Selected[m.Cursor] = struct{}{}
+					m.Selected[m.cursor] = struct{}{}
 				}
 			case "q", "Q":
 				// back to search state
@@ -163,15 +199,23 @@ func (m Dictionary) View() string {
 			s += fmt.Sprintf("\n\033[31m%s\033[0m\n", m.warnMsg)
 		}
 	case dictionarySelectDef:
-		s += fmt.Sprintf("Target: %s\n", m.Target)
-		s += fmt.Sprintf("Choose one or more definitions for \033[32m%s\033[0m:\n\n", m.searchWord)
+		header := fmt.Sprintf("Target: %s\n", m.Target)
+		header += fmt.Sprintf("Choose one or more definitions for \033[32m%s\033[0m:\n\n", m.searchWord)
 		if len(m.warnMsg) != 0 {
-			s += fmt.Sprintf("\033[31m%s\033[0m\n\n", m.warnMsg)
+			header += fmt.Sprintf("\033[31m%s\033[0m\n\n", m.warnMsg)
 		}
+		footer := "\nPress space, enter or x to select\nPress q to skip\n"
+		footer += "Press f or Ctrl + s to flush\nPress Ctrl + c to quit.\n"
+		remainHeight := lipgloss.Height(header) + lipgloss.Height(footer) + 1
+		currentHeight := remainHeight
+		var content string
 		for i, choice := range m.Choices {
+			if m.cursor-i > m.height-remainHeight {
+				continue
+			}
 			// Is the cursor pointing at this choice?
 			cursor := " " // no cursor
-			if m.Cursor == i {
+			if m.cursor == i {
 				cursor = ">" // cursor!
 			}
 			// Is this choice selected?
@@ -180,11 +224,41 @@ func (m Dictionary) View() string {
 				checked = "x" // selected!
 			}
 			// Render the row
-			s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
+			line := fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
+			// longer than terminal
+			if width := lipgloss.Width(line); width > m.width+1 {
+				// since we replace all \s with space when search
+				// for curr, end := 0, m.width; curr < width; {
+				// 	if end < width {
+				// 		content += fmt.Sprintf("%s\n", line[curr:end])
+				// 		currentHeight++
+				// 		if currentHeight > m.height {
+				// 			break
+				// 		}
+				// 		end += m.width
+				// 	} else {
+				// 		content += fmt.Sprintf("%s\n", line[curr:])
+				// 		currentHeight++
+				// 		if currentHeight > m.height {
+				// 			break
+				// 		}
+				// 	}
+				// 	curr += m.width
+				// }
+				content += fmt.Sprintf("%s...\n", line[:m.width-3])
+				currentHeight++
+				if currentHeight > m.height {
+					break
+				}
+			} else {
+				content += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
+				currentHeight++
+				if currentHeight > m.height {
+					break
+				}
+			}
 		}
-		s += "\nPress space, enter or x to select\nPress q to skip\n"
-		// The footer
-		s += "Press f or Ctrl + s to flush\nPress Ctrl + c to quit.\n"
+		s = fmt.Sprintf("%s%s%s", header, content, footer)
 	default:
 		return "some went wrong"
 	}
@@ -195,7 +269,7 @@ func (m Dictionary) backToSearch() Dictionary {
 	m.warnMsg = ""
 	m.Selected = make(map[int]struct{})
 	m.Choices = make([]string, 0)
-	m.Cursor = 0
+	m.cursor = 0
 	m.state = dictionarySearch
 	shouldCursorReset := m.SearchWord.Reset()
 	if shouldCursorReset {

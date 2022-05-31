@@ -133,5 +133,7 @@ func main() {
 	} else if m, ok := m.(model.Dictionary); ok {
 		if m.GetError() != nil {
 			logger.Error(m.GetError())
+		} else {
+			logger.Infoln("normally exit")
 	}
 }
