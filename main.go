@@ -123,13 +123,15 @@ func main() {
 					return
 				}
 			}
-			logger.Info("last byte: <", lastByte, ">")
 		}
 	}
 	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target), tea.WithAltScreen())
 	// p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target))
 
-	if err := p.Start(); err != nil {
+	if m, err := p.StartReturningModel(); err != nil {
 		logger.Fatal(err)
+	} else if m, ok := m.(model.Dictionary); ok {
+		if m.GetError() != nil {
+			logger.Error(m.GetError())
 	}
 }

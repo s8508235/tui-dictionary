@@ -32,6 +32,7 @@ type Dictionary struct {
 	searchWord string
 	warnMsg    string
 	state      dictionaryState
+	err        error
 	// dependencies
 	Logger     *logrus.Logger
 	OutFile    *os.File
@@ -57,18 +58,24 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch err {
 				case nil:
 				case tools.ErrWord:
-					m.warnMsg = fmt.Sprintf("wrong format of input: %s", inputWord)
+					if len(inputWord) != 0 {
+						m.warnMsg = fmt.Sprintf("wrong format of input: %s", inputWord)
+					} else {
+						m.warnMsg = "empty input"
+					}
 					shouldCursorReset := m.SearchWord.Reset()
 					if shouldCursorReset {
 						m.SearchWord.Focus()
 					}
 					return m, textinput.Blink
 				default:
-					m.Logger.Errorln("Fail to ask:", err)
+					m.err = fmt.Errorf("fail to ask: %w", err)
 					return m, tea.Quit
 				}
 				m.searchWord = m.Lemmatizer.Lemma(inputWord)
+				m.warnMsg = ""
 				m.Logger.Debugln("going to search", m.searchWord)
+				// if stuck, no way to return. have to be more responsive
 				m.Spinner.Start()
 				results, err := m.Dictionary.Search(m.searchWord)
 				if err == dictionary.ErrorNoDef {
@@ -81,7 +88,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.Spinner.Stop()
 					return m, textinput.Blink
 				} else if err != nil {
-					m.Logger.Errorln("Search error:", err)
+					m.err = fmt.Errorf("fail to search: %w", err)
 					m.Spinner.Stop()
 					return m, tea.Quit
 				}
@@ -91,14 +98,13 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SearchWord.Blur()
 				m.Choices = results
 				m.Cursor = 0
-				m.warnMsg = ""
 				return m, nil
 			case tea.KeyCtrlC, tea.KeyEsc:
 				return m, tea.Quit
 			}
 		// We handle errors just like any other message
 		case error:
-			m.Logger.Error(msg)
+			m.err = msg
 			return m, tea.Quit
 		}
 		m.SearchWord, cmd = m.SearchWord.Update(msg)
@@ -106,7 +112,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
-			case "z", "Z":
+			case "f", "F", "ctrl+s", "ctrl+S":
 				if len(m.Selected) == 0 {
 					m.warnMsg = "Please at least select one definition"
 					return m, nil
@@ -116,17 +122,17 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					flushed = append(flushed, m.Choices[key])
 				}
 				if err := writeOutput(m.Logger, m.OutFile, m.searchWord, flushed); err != nil {
-					m.Logger.Error(msg)
+					m.err = fmt.Errorf("fail to write output file: %w", err)
 					return m, tea.Quit
 				}
 				// back to search state
 				return m.backToSearch(), textinput.Blink
 			// These keys should exit the program.
-			case "ctrl+c", "q", "Q":
+			case "ctrl+c", "ctrl+C":
 				return m, tea.Quit
-			case "up", "k":
+			case "up", "w", "W":
 				m.Cursor = (m.Cursor - 1 + len(m.Choices)) % len(m.Choices)
-			case "down", "j":
+			case "down", "s", "S":
 				m.Cursor = (m.Cursor + 1 + len(m.Choices)) % len(m.Choices)
 			case "enter", " ", "x", "X":
 				_, ok := m.Selected[m.Cursor]
@@ -135,7 +141,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					m.Selected[m.Cursor] = struct{}{}
 				}
-			case "s", "S":
+			case "q", "Q":
 				// back to search state
 				return m.backToSearch(), textinput.Blink
 			}
@@ -148,6 +154,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Dictionary) View() string {
+	// TODO: too long for width and height
 	var s string
 	switch m.state {
 	case dictionarySearch:
@@ -175,9 +182,9 @@ func (m Dictionary) View() string {
 			// Render the row
 			s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
 		}
-		s += "\nPress space, enter or x to select\nPress s to skip\n"
+		s += "\nPress space, enter or x to select\nPress q to skip\n"
 		// The footer
-		s += "Press z to flush\nPress q to quit.\n"
+		s += "Press f or Ctrl + s to flush\nPress Ctrl + c to quit.\n"
 	default:
 		return "some went wrong"
 	}
@@ -195,6 +202,10 @@ func (m Dictionary) backToSearch() Dictionary {
 		m.SearchWord.Focus()
 	}
 	return m
+}
+
+func (m Dictionary) GetError() error {
+	return m.err
 }
 
 func writeOutput(logger *logrus.Logger, out *os.File, searchWord string, definition []string) error {

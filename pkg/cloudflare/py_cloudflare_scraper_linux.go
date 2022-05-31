@@ -1,3 +1,5 @@
+//go:build linux
+
 package cloudflare
 
 // #cgo pkg-config: python3
