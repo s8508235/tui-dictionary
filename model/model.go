@@ -86,32 +86,6 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.warnMsg = ""
 				m.Logger.Debugln("going to search", m.searchWord)
 				// if stuck, no way to return. have to be more responsive
-				/* test result
-				results := []string{
-					"a",
-					"b",
-					"c",
-					"d",
-					"e",
-					"f",
-					"g",
-					"h",
-					"i",
-					"j",
-					"k",
-					"l",
-					"m",
-					"n",
-					"o",
-					"p",
-					"q",
-					"r",
-					"s",
-					"t",
-					"u",
-					"",
-				}
-				*/
 				m.Spinner.Start()
 				results, err := m.Dictionary.Search(m.searchWord)
 				if err == dictionary.ErrorNoDef {
@@ -148,6 +122,9 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
+			case "c", "C":
+				m.warnMsg = ""
+				return m, nil
 			case "f", "F", "ctrl+s", "ctrl+S":
 				if len(m.Selected) == 0 {
 					m.warnMsg = "Please at least select one definition"
@@ -200,17 +177,24 @@ func (m Dictionary) View() string {
 		}
 	case dictionarySelectDef:
 		header := fmt.Sprintf("Target: %s\n", m.Target)
-		header += fmt.Sprintf("Choose one or more definitions for \033[32m%s\033[0m:\n\n", m.searchWord)
+		header += fmt.Sprintf("There are \033[92m%d\033[0m definitions, please choose one or more definitions for \033[92m%s\033[0m:\n\n", len(m.Choices), m.searchWord)
 		if len(m.warnMsg) != 0 {
 			header += fmt.Sprintf("\033[31m%s\033[0m\n\n", m.warnMsg)
 		}
 		footer := "\nPress space, enter or x to select\nPress q to skip\n"
-		footer += "Press f or Ctrl + s to flush\nPress Ctrl + c to quit.\n"
-		remainHeight := lipgloss.Height(header) + lipgloss.Height(footer) + 1
+		footer += "Press f or Ctrl + s to flush\nPress Ctrl + c to quit."
+		remainHeight := lipgloss.Height(header) + lipgloss.Height(footer)
+		pageLineCount := m.height - remainHeight + 1
+		currentPage := m.cursor / pageLineCount
 		currentHeight := remainHeight
+		var remainder int
+		if len(m.Choices)%pageLineCount != 0 {
+			remainder = 1
+		}
+		footer = fmt.Sprintf("\033[38:2:255:165:0mpage: %2d / %2d\033[0m", currentPage+1, len(m.Choices)/pageLineCount+(remainder)) + footer
 		var content string
 		for i, choice := range m.Choices {
-			if m.cursor-i > m.height-remainHeight {
+			if currentPage*pageLineCount > i || (currentPage+1)*pageLineCount <= i {
 				continue
 			}
 			// Is the cursor pointing at this choice?
@@ -224,7 +208,7 @@ func (m Dictionary) View() string {
 				checked = "x" // selected!
 			}
 			// Render the row
-			line := fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
+			line := fmt.Sprintf("%s %2d [%s] %s\n", cursor, i+1, checked, choice)
 			// longer than terminal
 			if width := lipgloss.Width(line); width > m.width+1 {
 				// since we replace all \s with space when search
@@ -245,13 +229,14 @@ func (m Dictionary) View() string {
 				// 	}
 				// 	curr += m.width
 				// }
-				content += fmt.Sprintf("%s...\n", line[:m.width-3])
+				content += fmt.Sprintf("%s...\n", line[:m.width-4])
 				currentHeight++
 				if currentHeight > m.height {
 					break
 				}
 			} else {
-				content += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
+				// content += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
+				content += line
 				currentHeight++
 				if currentHeight > m.height {
 					break
