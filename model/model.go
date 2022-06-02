@@ -1,12 +1,13 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
-	"os"
+	"io"
 	"strings"
 
 	"github.com/aaaton/golem/v4"
-	"github.com/briandowns/spinner"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -16,15 +17,18 @@ import (
 )
 
 type dictionaryState int
+type dictionaryResult []string
 
 const (
-	dictionarySearch dictionaryState = iota
+	dictionarySearchStart dictionaryState = iota
+	dictionarySearching
 	dictionarySelectDef
 )
 
 type Dictionary struct {
 	Target     string
 	SearchWord textinput.Model
+	Spinner    spinner.Model
 	// selection
 	Choices  []string         // items on the to-do list
 	cursor   int              // which to-do list item our cursor is pointing at
@@ -38,10 +42,9 @@ type Dictionary struct {
 	width      int
 	// dependencies
 	Logger     *logrus.Logger
-	OutFile    *os.File
+	Out        io.Writer
 	Lemmatizer *golem.Lemmatizer
 	Dictionary dictionary.Interface
-	Spinner    *spinner.Spinner
 }
 
 func (m Dictionary) Init() tea.Cmd {
@@ -58,7 +61,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	switch m.state {
-	case dictionarySearch:
+	case dictionarySearchStart:
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.Type {
@@ -85,30 +88,11 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchWord = m.Lemmatizer.Lemma(inputWord)
 				m.warnMsg = ""
 				m.Logger.Debugln("going to search", m.searchWord)
-				// if stuck, no way to return. have to be more responsive
-				m.Spinner.Start()
-				results, err := m.Dictionary.Search(m.searchWord)
-				if err == dictionary.ErrorNoDef {
-					m.warnMsg = fmt.Sprintf("no definition for: %s\n", m.searchWord)
-					// reset search state
-					shouldCursorReset := m.SearchWord.Reset()
-					if shouldCursorReset {
-						m.SearchWord.Focus()
-					}
-					m.Spinner.Stop()
-					return m, textinput.Blink
-				} else if err != nil {
-					m.err = fmt.Errorf("fail to search: %w", err)
-					m.Spinner.Stop()
-					return m, tea.Quit
-				}
-				m.Spinner.Stop()
+
 				// go to selectDef state
-				m.state = dictionarySelectDef
+				m.state = dictionarySearching
 				m.SearchWord.Blur()
-				m.Choices = results
-				m.cursor = 0
-				return m, nil
+				return m, tea.Batch(spinner.Tick, m.wordSearch())
 			case tea.KeyCtrlC, tea.KeyEsc:
 				return m, tea.Quit
 			}
@@ -118,6 +102,28 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		m.SearchWord, cmd = m.SearchWord.Update(msg)
+	case dictionarySearching:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "ctrl+c", "ctrl+C":
+				return m, tea.Quit
+			}
+		case spinner.TickMsg:
+			var cmd tea.Cmd
+			m.Spinner, cmd = m.Spinner.Update(msg)
+			return m, cmd
+		case dictionaryResult:
+			m.Choices = []string(msg)
+			m.cursor = 0
+			m.state = dictionarySelectDef
+			return m, nil
+		case error:
+			m.err = msg
+			return m, tea.Quit
+		default:
+			return m, nil
+		}
 	case dictionarySelectDef:
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -134,7 +140,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				for key := range m.Selected {
 					flushed = append(flushed, m.Choices[key])
 				}
-				if err := writeOutput(m.Logger, m.OutFile, m.searchWord, flushed); err != nil {
+				if err := writeOutput(m.Logger, m.Out, m.searchWord, flushed); err != nil {
 					m.err = fmt.Errorf("fail to write output file: %w", err)
 					return m, tea.Quit
 				}
@@ -170,11 +176,17 @@ func (m Dictionary) View() string {
 	// TODO: too long for width and height
 	var s string
 	switch m.state {
-	case dictionarySearch:
+	case dictionarySearchStart:
 		s += fmt.Sprintf("Target: %s\nWord: %s [Press enter to search, Ctrl+C or Esc to exit]", m.Target, m.SearchWord.View())
 		if len(m.warnMsg) != 0 {
 			s += fmt.Sprintf("\n\033[31m%s\033[0m\n", m.warnMsg)
 		}
+	case dictionarySearching:
+		s = fmt.Sprintf("Target: %s\n", m.Target)
+		if len(m.warnMsg) != 0 {
+			s += fmt.Sprintf("\n\033[31m%s\033[0m\n", m.warnMsg)
+		}
+		s += fmt.Sprintf("%s\nEnter Ctrl+C to exit", m.Spinner.View())
 	case dictionarySelectDef:
 		header := fmt.Sprintf("Target: %s\n", m.Target)
 		header += fmt.Sprintf("There are \033[92m%d\033[0m definitions, please choose one or more definitions for \033[92m%s\033[0m:\n\n", len(m.Choices), m.searchWord)
@@ -255,7 +267,7 @@ func (m Dictionary) backToSearch() Dictionary {
 	m.Selected = make(map[int]struct{})
 	m.Choices = make([]string, 0)
 	m.cursor = 0
-	m.state = dictionarySearch
+	m.state = dictionarySearchStart
 	shouldCursorReset := m.SearchWord.Reset()
 	if shouldCursorReset {
 		m.SearchWord.Focus()
@@ -267,12 +279,34 @@ func (m Dictionary) GetError() error {
 	return m.err
 }
 
-func writeOutput(logger *logrus.Logger, out *os.File, searchWord string, definition []string) error {
-	output := fmt.Sprintf("%s\t%s\n", searchWord, strings.Join(definition, ";"))
-	if _, err := out.WriteString(output); err != nil {
+func (m Dictionary) wordSearch() tea.Cmd {
+	return func() tea.Msg {
+		results, err := m.Dictionary.Search(m.searchWord)
+		if err != nil {
+			return err
+		}
+		return dictionaryResult(results)
+	}
+}
+
+func writeOutput(logger *logrus.Logger, out io.Writer, searchWord string, definition []string) error {
+	var buf bytes.Buffer
+	if _, err := buf.WriteString(searchWord); err != nil {
+		logger.Errorln("Fail to write:", err)
+		return err
+	}
+	if _, err := buf.WriteRune('\t'); err != nil {
+		logger.Errorln("Fail to write:", err)
+		return err
+	}
+	if _, err := buf.WriteString(strings.Join(definition, ";")); err != nil {
+		logger.Errorln("Fail to write:", err)
+		return err
+	}
+	if _, err := out.Write(buf.Bytes()); err != nil {
 		logger.Errorln("Fail to write output file though:", err)
 		return err
 	}
-	logger.Debugln("wrote to", out.Name(), "with word:", searchWord, "definition:", strings.Join(definition, ";"))
+	logger.Debugln("word:", searchWord, "definition:", strings.Join(definition, ";"))
 	return nil
 }

@@ -11,8 +11,8 @@ import (
 
 	"github.com/aaaton/golem/v4"
 	"github.com/aaaton/golem/v4/dicts/en"
-	"github.com/briandowns/spinner"
 	"github.com/c-bata/go-prompt"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/s8508235/tui-dictionary/model"
@@ -33,21 +33,27 @@ func targetCompleter(fileNameList []string) prompt.Completer {
 }
 
 func initialModel(logger *logrus.Logger, lemmatizer *golem.Lemmatizer,
-	dictionary dictionary.Interface, out *os.File, target string) model.Dictionary {
+	dictionary dictionary.Interface, out io.Writer, target string) model.Dictionary {
 
 	searchWord := textinput.New()
 	searchWord.Placeholder = "test"
 	searchWord.Focus()
+	s := spinner.New()
+	// https://github.com/briandowns/spinner
+	s.Spinner = spinner.Spinner{
+		Frames: []string{"[>>> >]", "[]>>>> []", "[] >>>> []", "[] >>>> []", "[] >>>> []", "[] >>>>[]", "[>> >>]"},
+		FPS:    100 * time.Millisecond,
+	}
 	return model.Dictionary{
 		Logger:     logger,
 		Target:     target,
 		Choices:    make([]string, 0),
 		Selected:   make(map[int]struct{}),
-		OutFile:    out,
+		Out:        out,
 		Lemmatizer: lemmatizer,
 		Dictionary: dictionary,
 		SearchWord: searchWord,
-		Spinner:    spinner.New(spinner.CharSets[43], 100*time.Millisecond), // Build our new spinner
+		Spinner:    s,
 	}
 }
 
@@ -85,6 +91,10 @@ func main() {
 	)
 	tools.Exit()
 	shouldPadding := false
+	var out io.Writer
+	if target == "/dev/null" {
+		out = io.Discard
+	} else {
 	if _, err := os.Stat(target); err == nil {
 		logger.Debugln("target exist")
 		shouldPadding = true
@@ -98,19 +108,20 @@ func main() {
 		fmt.Println("\n\033[31mplease enter .txt as file extension\033[0m")
 		return
 	}
-	out, err := os.OpenFile(filepath.Clean(target), os.O_CREATE|os.O_RDWR|os.O_APPEND|os.O_SYNC, 0600)
+		outFile, err := os.OpenFile(filepath.Clean(target), os.O_CREATE|os.O_RDWR|os.O_APPEND|os.O_SYNC, 0600)
 	if err != nil {
 		logger.Errorln("Fail to open output file", err)
 		return
 	}
+		defer outFile.Close()
 	if shouldPadding {
 		lastByte := make([]byte, 2)
-		end, err := out.Seek(0, io.SeekEnd)
+			end, err := outFile.Seek(0, io.SeekEnd)
 		if err != nil {
 			logger.Error(err)
 		}
 		if end > 1 {
-			n, err := out.ReadAt(lastByte, end-2)
+				n, err := outFile.ReadAt(lastByte, end-2)
 			if n != 2 {
 				fmt.Printf("\n\033[31mfile corrupt\033[0m")
 				return
@@ -119,11 +130,12 @@ func main() {
 				return
 			}
 			if string(lastByte) != "\n\n" {
-				if _, err := out.WriteString("\n\n"); err != nil {
+					if _, err := outFile.WriteString("\n\n"); err != nil {
 					return
 				}
 			}
 		}
+	}
 	}
 	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target), tea.WithAltScreen())
 	// p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target))
@@ -136,4 +148,5 @@ func main() {
 		} else {
 			logger.Infoln("normally exit")
 	}
+}
 }
