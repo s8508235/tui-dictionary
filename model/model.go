@@ -2,6 +2,7 @@ package model
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -119,8 +120,18 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = dictionarySelectDef
 			return m, nil
 		case error:
-			m.err = msg
-			return m, tea.Quit
+			if !errors.Is(msg, dictionary.ErrorNoDef) {
+				m.err = msg
+				return m, tea.Quit
+			}
+			m.warnMsg = dictionary.ErrorNoDef.Error()
+			shouldCursorReset := m.SearchWord.Reset()
+			if shouldCursorReset {
+				m.SearchWord.Focus()
+			}
+			m.state = dictionarySearchStart
+			m.Spinner.Finish()
+			return m, textinput.Blink
 		default:
 			return m, nil
 		}

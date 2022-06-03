@@ -19,6 +19,7 @@ import (
 
 // /usr/include/python3.10/Python.h
 func GetCloudFlareProtectedHTML(searchURL string) (string, error) {
+	// context.c:56: warning: mpd_setminalloc: ignoring request to set MPD_MINALLOC a second time
 	C.Py_Initialize()
 	// check module
 	moduleCString := C.CString("cloudscraper")

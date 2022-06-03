@@ -136,6 +136,7 @@ func main() {
 			}
 		}
 	}
+		out = outFile
 	}
 	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target), tea.WithAltScreen())
 	// p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target))
