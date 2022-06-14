@@ -208,6 +208,9 @@ func (m Dictionary) View() string {
 		footer += "Press f or Ctrl + s to flush\nPress Ctrl + c to quit."
 		remainHeight := lipgloss.Height(header) + lipgloss.Height(footer)
 		pageLineCount := m.height - remainHeight + 1
+		if pageLineCount < 1 {
+			return "too small to show content"
+		}
 		currentPage := m.cursor / pageLineCount
 		currentHeight := remainHeight
 		var remainder int
@@ -311,6 +314,10 @@ func writeOutput(logger *logrus.Logger, out io.Writer, searchWord string, defini
 		return err
 	}
 	if _, err := buf.WriteString(strings.Join(definition, ";")); err != nil {
+		logger.Errorln("Fail to write:", err)
+		return err
+	}
+	if _, err := buf.WriteRune('\n'); err != nil {
 		logger.Errorln("Fail to write:", err)
 		return err
 	}
