@@ -107,6 +107,9 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
+			case "q", "Q":
+				// back to search state
+				return m.backToSearch(), textinput.Blink
 			case "ctrl+c", "ctrl+C":
 				return m, tea.Quit
 			}
@@ -197,7 +200,7 @@ func (m Dictionary) View() string {
 		if len(m.warnMsg) != 0 {
 			s += fmt.Sprintf("\n\033[31m%s\033[0m\n", m.warnMsg)
 		}
-		s += fmt.Sprintf("%s\nEnter Ctrl+C to exit", m.Spinner.View())
+		s += fmt.Sprintf("%s\nEnter q to cancel or Ctrl+C to exit", m.Spinner.View())
 	case dictionarySelectDef:
 		header := fmt.Sprintf("Target: %s\n", m.Target)
 		header += fmt.Sprintf("There are \033[92m%d\033[0m definitions, please choose one or more definitions for \033[92m%s\033[0m:\n\n", len(m.Choices), m.searchWord)
