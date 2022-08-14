@@ -62,6 +62,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	switch m.state {
 	case dictionarySearchStart:
+		var cmd tea.Cmd
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.Type {
