@@ -51,9 +51,8 @@ type Dictionary struct {
 func (m Dictionary) Init() tea.Cmd {
 	return textinput.Blink
 }
-
 func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+
 	switch msg := msg.(type) {
 	// init/update for width/height
 	case tea.WindowSizeMsg:
@@ -93,7 +92,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// go to selectDef state
 				m.state = dictionarySearching
 				m.SearchWord.Blur()
-				return m, tea.Batch(spinner.Tick, m.wordSearch())
+				return m, tea.Batch(m.Spinner.Tick, m.wordSearch())
 			case tea.KeyCtrlC, tea.KeyEsc:
 				return m, tea.Quit
 			}
@@ -103,6 +102,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		m.SearchWord, cmd = m.SearchWord.Update(msg)
+		return m, cmd
 	case dictionarySearching:
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -113,10 +113,6 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "ctrl+c", "ctrl+C":
 				return m, tea.Quit
 			}
-		case spinner.TickMsg:
-			var cmd tea.Cmd
-			m.Spinner, cmd = m.Spinner.Update(msg)
-			return m, cmd
 		case dictionaryResult:
 			m.Choices = []string(msg)
 			m.cursor = 0
@@ -133,10 +129,11 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SearchWord.Focus()
 			}
 			m.state = dictionarySearchStart
-			m.Spinner.Finish()
 			return m, textinput.Blink
 		default:
-			return m, nil
+			var cmd tea.Cmd
+			m.Spinner, cmd = m.Spinner.Update(msg)
+			return m, cmd
 		}
 	case dictionarySelectDef:
 		switch msg := msg.(type) {
@@ -181,9 +178,10 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		}
 	default:
-		m.Logger.Warn("????")
+		m.err = errors.New("unreachable")
+		return m, tea.Quit
 	}
-	return m, cmd
+	return m, nil
 }
 
 func (m Dictionary) View() string {
