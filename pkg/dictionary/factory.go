@@ -198,7 +198,6 @@ func NewDictComRussianEnglishDictionary(logger *log.Logger) (Interface, error) {
 			// logger.Info([]rune("у́"))
 			// logger.Info([]rune("я́"))
 			s := fmt.Sprintf(dictComRussianEnglishURL, replaceSpaceWithASCII(removeRussianAccentMarks(word)))
-			logger.Infoln(s)
 			return s
 		},
 		Selector:   dictComRussianEnglishSelector,
@@ -242,5 +241,24 @@ func NewOpenRussianDictionary(logger *log.Logger) (Interface, error) {
 		},
 		Selector:   openRussianSelector,
 		SearchFunc: generalWebDictionarySearch,
+	}, nil
+}
+
+func NewMyPreferRUDictionary(logger *log.Logger) (*MyPrefer, error) {
+	dictComRE, err := NewDictComRussianEnglishDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
+	RUDict, err := NewRussianDictDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
+	openRU, err := NewOpenRussianDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
+	dictionaries := []Interface{dictComRE, RUDict, openRU}
+	return &MyPrefer{
+		Dictionaries: dictionaries,
 	}, nil
 }
