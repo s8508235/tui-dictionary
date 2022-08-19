@@ -9,6 +9,7 @@ require (
 	github.com/charmbracelet/bubbles v0.14.0
 	github.com/charmbracelet/bubbletea v0.22.1
 	github.com/charmbracelet/lipgloss v0.6.0
+	github.com/erikgeiser/promptkit v0.7.0
 	github.com/gocolly/colly/v2 v2.1.0
 	github.com/keepeye/logrus-filename v0.0.0-20190711075016-ce01a4391dd1
 	github.com/sirupsen/logrus v1.9.0

@@ -14,8 +14,11 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/erikgeiser/promptkit"
+	"github.com/erikgeiser/promptkit/selection"
 	"github.com/s8508235/tui-dictionary/model"
 	"github.com/s8508235/tui-dictionary/pkg/dictionary"
+	"github.com/s8508235/tui-dictionary/pkg/entity"
 	"github.com/s8508235/tui-dictionary/pkg/log"
 	"github.com/s8508235/tui-dictionary/pkg/tools"
 	"github.com/sirupsen/logrus"
@@ -32,7 +35,7 @@ func targetCompleter(fileNameList []string) prompt.Completer {
 }
 
 func initialModel(logger *logrus.Logger, lemmatizer *golem.Lemmatizer,
-	dictionary dictionary.Interface, out io.Writer, target string) model.Dictionary {
+	dictionary dictionary.Interface, out io.Writer, lang entity.DictionaryLanguage, target string) model.Dictionary {
 
 	searchWord := textinput.New()
 	searchWord.Placeholder = "test"
@@ -46,6 +49,7 @@ func initialModel(logger *logrus.Logger, lemmatizer *golem.Lemmatizer,
 	return model.Dictionary{
 		Logger:     logger,
 		Target:     target,
+		Language:   lang,
 		Choices:    make([]string, 0),
 		Selected:   make(map[int]struct{}),
 		Out:        out,
@@ -59,16 +63,6 @@ func initialModel(logger *logrus.Logger, lemmatizer *golem.Lemmatizer,
 func main() {
 	logger := log.New()
 	// logger.SetLevel(logrus.DebugLevel)
-	lemmatizer, err := golem.New(en.New())
-	if err != nil {
-		logger.Errorln("Fail to init lemmatizer:", err)
-		return
-	}
-	dict, err := dictionary.NewMyPreferDictionary(logger)
-	if err != nil {
-		logger.Errorln("Fail to init dictionary:", err)
-		return
-	}
 	files, err := os.ReadDir("./")
 	if err != nil {
 		logger.Errorln("Fail to read current directory:", err)
@@ -81,6 +75,65 @@ func main() {
 		}
 	}
 	logger.Debug(strings.Join(fileNameList, ","))
+
+	sp := selection.New("Choose a language:", []*selection.Choice{
+		{
+			Index:  0,
+			String: "English to English",
+			Value:  "en",
+		},
+		{
+			Index:  1,
+			String: "Russian to English",
+			Value:  "ru",
+		},
+	})
+	sp.Filter = nil
+	var choice *selection.Choice
+
+	if choice, err = sp.RunPrompt(); err != nil && err != promptkit.ErrAborted {
+		logger.Error("Error: %v\n", err)
+		os.Exit(1)
+	}
+	var language entity.DictionaryLanguage
+	lang, ok := choice.Value.(string)
+	if !ok {
+		logger.Error("Error: %v\n", err)
+		os.Exit(1)
+	}
+	switch lang {
+	case "en":
+		language = entity.English
+	case "ru":
+		language = entity.Russian
+	default:
+		logger.Error(entity.ErrUnknownLanguage)
+		os.Exit(1)
+	}
+
+	var dict dictionary.Interface
+	switch language {
+	case entity.English:
+		dict, err = dictionary.NewMyPreferDictionary(logger)
+		if err != nil {
+			logger.Errorln("Fail to init dictionary:", err)
+			return
+		}
+	case entity.Russian:
+		dict, err = dictionary.NewMyPreferRUDictionary(logger)
+		if err != nil {
+			logger.Errorln("Fail to init dictionary:", err)
+			return
+		}
+	default:
+		logger.Error(entity.ErrUnknownLanguage)
+		os.Exit(1)
+	}
+	lemmatizer, err := golem.New(en.New())
+	if err != nil {
+		logger.Errorln("Fail to init lemmatizer:", err)
+		return
+	}
 	// enter target -> loop (enter word, select definition)
 	target := prompt.Input(
 		"Target: ",
@@ -141,8 +194,8 @@ func main() {
 		}
 		out = outFile
 	}
-	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target), tea.WithAltScreen())
-	// p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target))
+	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, language, target), tea.WithAltScreen())
+	// p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, language, target))
 
 	if m, err := p.StartReturningModel(); err != nil {
 		logger.Fatal(err)

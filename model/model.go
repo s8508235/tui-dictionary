@@ -13,6 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/s8508235/tui-dictionary/pkg/dictionary"
+	"github.com/s8508235/tui-dictionary/pkg/entity"
 	"github.com/s8508235/tui-dictionary/pkg/tools"
 	"github.com/sirupsen/logrus"
 )
@@ -27,6 +28,7 @@ const (
 )
 
 type Dictionary struct {
+	Language   entity.DictionaryLanguage
 	Target     string
 	SearchWord textinput.Model
 	Spinner    spinner.Model
@@ -68,7 +70,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.Type {
 			case tea.KeyEnter:
 				inputWord := strings.TrimSpace(m.SearchWord.Value())
-				err := tools.WordValidate(inputWord)
+				err := tools.WordValidate(inputWord, m.Language)
 				switch err {
 				case nil:
 				case tools.ErrWord:
@@ -86,10 +88,21 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.err = fmt.Errorf("fail to ask: %w", err)
 					return m, tea.Quit
 				}
+				switch m.Language {
+				case entity.English:
 				m.searchWord = m.Lemmatizer.Lemma(inputWord)
+				case entity.Russian:
+					m.searchWord, err = tools.RussianPreprocess(inputWord)
+					if err != nil {
+						m.err = err
+						return m, tea.Quit
+					}
+				default:
+					m.err = entity.ErrUnknownLanguage
+					return m, tea.Quit
+				}
 				m.warnMsg = ""
 				m.Logger.Debugln("going to search", m.searchWord)
-
 				// go to selectDef state
 				m.state = dictionarySearching
 				m.SearchWord.Blur()
@@ -187,19 +200,22 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Dictionary) View() string {
 	// TODO: too long for width and height
-	var s string
 	switch m.state {
 	case dictionarySearchStart:
-		s += fmt.Sprintf("Target: %s\nWord: %s [Press enter to search, Ctrl+C or Esc to exit]", m.Target, m.SearchWord.View())
+		var s string
+		s = fmt.Sprintf("Target: %s\nWord: %s [Press enter to search, Ctrl+C or Esc to exit]", m.Target, m.SearchWord.View())
 		if len(m.warnMsg) != 0 {
 			s += fmt.Sprintf("\n\033[31m%s\033[0m\n", m.warnMsg)
 		}
+		return s
 	case dictionarySearching:
+		var s string
 		s = fmt.Sprintf("Target: %s\n", m.Target)
 		if len(m.warnMsg) != 0 {
 			s += fmt.Sprintf("\n\033[31m%s\033[0m\n", m.warnMsg)
 		}
 		s += fmt.Sprintf("%s\nEnter q to cancel or Ctrl+C to exit", m.Spinner.View())
+		return s
 	case dictionarySelectDef:
 		header := fmt.Sprintf("Target: %s\n", m.Target)
 		header += fmt.Sprintf("There are \033[92m%d\033[0m definitions, please choose one or more definitions for \033[92m%s\033[0m:\n\n", len(m.Choices), m.searchWord)
@@ -271,11 +287,10 @@ func (m Dictionary) View() string {
 				}
 			}
 		}
-		s = fmt.Sprintf("%s%s%s", header, content, footer)
+		return fmt.Sprintf("%s%s%s", header, content, footer)
 	default:
 		return "some went wrong"
 	}
-	return s
 }
 
 func (m Dictionary) backToSearch() Dictionary {
