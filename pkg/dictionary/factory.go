@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"strings"
 
 	"github.com/gocolly/colly/v2"
 	"github.com/s8508235/tui-dictionary/pkg/cloudflare"
@@ -43,6 +44,10 @@ func (s *emptyStorage) Close() error {
 	return nil
 }
 
+func replaceSpaceWithASCII(word string) string {
+	return re.ReplaceAllString(word, "%20")
+}
+
 func generalWebDictionarySearch(results *[]string, counter *int) func(e *colly.HTMLElement) {
 	return func(e *colly.HTMLElement) {
 		// if *counter < 3 {
@@ -50,8 +55,19 @@ func generalWebDictionarySearch(results *[]string, counter *int) func(e *colly.H
 		// } else {
 		// 	return
 		// }
-		// *counter += 1
+		*counter += 1
 	}
+}
+
+// removeRussianAccentMarks remove stress in Russian but this is not best strategy
+// https://russianalphabet.online/stress-marks-in-russian/
+func removeRussianAccentMarks(word string) string {
+	return strings.Map(func(r rune) rune {
+		if int32(r) == 769 {
+			return -1
+		}
+		return r
+	}, word)
 }
 
 func NewDICTClient(logger *log.Logger, network, addr, prefix string) (*DICTClient, error) {
@@ -101,7 +117,7 @@ func NewUrbanDictionary(logger *log.Logger) (Interface, error) {
 		Crawler: c,
 		Logger:  logger,
 		SearchURL: func(word string) string {
-			return fmt.Sprintf(urbanURL, re.ReplaceAllString(word, "%20"))
+			return fmt.Sprintf(urbanURL, replaceSpaceWithASCII(word))
 		},
 		Selector:   urbanSelector,
 		SearchFunc: generalWebDictionarySearch,
@@ -118,7 +134,7 @@ func NewLearnerDictionary(logger *log.Logger) (Interface, error) {
 		Crawler: c,
 		Logger:  logger,
 		SearchURL: func(word string) string {
-			return fmt.Sprintf(learnerURL, re.ReplaceAllString(word, "%20"))
+			return fmt.Sprintf(learnerURL, replaceSpaceWithASCII(word))
 		},
 		Selector:   learnerSelector,
 		SearchFunc: generalWebDictionarySearch,
@@ -135,7 +151,7 @@ func NewWebsterDictionary(logger *log.Logger) (Interface, error) {
 		Crawler: c,
 		Logger:  logger,
 		SearchURL: func(word string) string {
-			return fmt.Sprintf(websterURL, re.ReplaceAllString(word, "%20"))
+			return fmt.Sprintf(websterURL, replaceSpaceWithASCII(word))
 		},
 		Selector:   websterURLSelector,
 		SearchFunc: websterSearch,
@@ -162,5 +178,69 @@ func NewMyPreferDictionary(logger *log.Logger) (*MyPrefer, error) {
 	dictionaries := []Interface{collins, webster, learner, urban}
 	return &MyPrefer{
 		Dictionaries: dictionaries,
+	}, nil
+}
+
+// NewDictComRussianEnglishDictionary must use with removeRussianAccentMarks, and don't care about stress
+func NewDictComRussianEnglishDictionary(logger *log.Logger) (Interface, error) {
+	c := colly.NewCollector()
+	// don't want to cache anything since it should be a light query
+	if err := c.SetStorage(&emptyStorage{}); err != nil {
+		return nil, err
+	}
+	return &WebDictionaryCrawler{
+		Crawler: c,
+		Logger:  logger,
+		SearchURL: func(word string) string {
+			// logger.Info([]rune("й"))
+			// logger.Info([]rune("е́"))
+			// logger.Info([]rune("о́"))
+			// logger.Info([]rune("у́"))
+			// logger.Info([]rune("я́"))
+			s := fmt.Sprintf(dictComRussianEnglishURL, replaceSpaceWithASCII(removeRussianAccentMarks(word)))
+			logger.Infoln(s)
+			return s
+		},
+		Selector:   dictComRussianEnglishSelector,
+		SearchFunc: generalWebDictionarySearch,
+	}, nil
+}
+
+func NewRussianDictDictionary(logger *log.Logger) (Interface, error) {
+	c := colly.NewCollector()
+	// don't want to cache anything since it should be a light query
+	if err := c.SetStorage(&emptyStorage{}); err != nil {
+		return nil, err
+	}
+	return &WebDictionaryCrawler{
+		Crawler: c,
+		Logger:  logger,
+		SearchURL: func(word string) string {
+			s := fmt.Sprintf(russianDictURL, replaceSpaceWithASCII(removeRussianAccentMarks(word)))
+			logger.Infoln(s)
+			return s
+		},
+		Selector:   russianDictSelector,
+		SearchFunc: generalWebDictionarySearch,
+	}, nil
+}
+
+// NewOpenRussianDictionary must use with removeRussianAccentMarks, and care about stress
+func NewOpenRussianDictionary(logger *log.Logger) (Interface, error) {
+	c := colly.NewCollector()
+	// don't want to cache anything since it should be a light query
+	if err := c.SetStorage(&emptyStorage{}); err != nil {
+		return nil, err
+	}
+	return &WebDictionaryCrawler{
+		Crawler: c,
+		Logger:  logger,
+		SearchURL: func(word string) string {
+			s := fmt.Sprintf(openRussianURL, replaceSpaceWithASCII(removeRussianAccentMarks(word)))
+			logger.Infoln(s)
+			return s
+		},
+		Selector:   openRussianSelector,
+		SearchFunc: generalWebDictionarySearch,
 	}, nil
 }
