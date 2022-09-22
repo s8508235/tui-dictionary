@@ -1,3 +1,9 @@
+## v0.1.2 (2022-09-22)
+
+### Fix
+
+- remove deprecate ioutil, update warn message when no def found, replace collins search
+
 ## v0.1.1 (2022-09-22)
 
 ### Refactor
