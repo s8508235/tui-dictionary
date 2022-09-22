@@ -124,7 +124,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.err = msg
 				return m, tea.Quit
 			}
-			m.warnMsg = dictionary.ErrorNoDef.Error()
+			m.warnMsg = fmt.Sprintf("%s for %s", dictionary.ErrorNoDef.Error(), m.searchWord)
 			shouldCursorReset := m.SearchWord.Reset()
 			if shouldCursorReset {
 				m.SearchWord.Focus()

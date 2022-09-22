@@ -17,13 +17,13 @@ build-windows: ## build server binary for windows
 	GOOS=windows GOARCH=amd64 go build -o ${APP}.exe main.go
 
 lint-install: 
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.46.2
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.49.0
 
 lint:
 	./bin/golangci-lint run ./...
 
 gosec-install:
-	curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s v2.11.0
+	curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s v2.13.1
 gosec:
 	./bin/gosec ./...
 

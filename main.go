@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -70,7 +69,7 @@ func main() {
 		logger.Errorln("Fail to init dictionary:", err)
 		return
 	}
-	files, err := ioutil.ReadDir("./")
+	files, err := os.ReadDir("./")
 	if err != nil {
 		logger.Errorln("Fail to read current directory:", err)
 		return
@@ -95,47 +94,51 @@ func main() {
 	if target == "/dev/null" {
 		out = io.Discard
 	} else {
-	if _, err := os.Stat(target); err == nil {
-		logger.Debugln("target exist")
-		shouldPadding = true
-	} else if !os.IsNotExist(err) {
-		logger.Error(err)
-		return
-	}
-	if filepath.Ext(target) == "" {
-		target += ".txt"
-	} else if filepath.Ext(target) != ".txt" {
-		fmt.Println("\n\033[31mplease enter .txt as file extension\033[0m")
-		return
-	}
-		outFile, err := os.OpenFile(filepath.Clean(target), os.O_CREATE|os.O_RDWR|os.O_APPEND|os.O_SYNC, 0600)
-	if err != nil {
-		logger.Errorln("Fail to open output file", err)
-		return
-	}
-		defer outFile.Close()
-	if shouldPadding {
-		lastByte := make([]byte, 2)
-			end, err := outFile.Seek(0, io.SeekEnd)
-		if err != nil {
+		if _, err := os.Stat(target); err == nil {
+			logger.Debugln("target exist")
+			shouldPadding = true
+		} else if !os.IsNotExist(err) {
 			logger.Error(err)
+			return
 		}
-		if end > 1 {
-				n, err := outFile.ReadAt(lastByte, end-2)
-			if n != 2 {
-				fmt.Printf("\n\033[31mfile corrupt\033[0m")
-				return
-			} else if err != nil {
-				logger.Error(err)
-				return
+		if filepath.Ext(target) == "" {
+			target += ".txt"
+		} else if filepath.Ext(target) != ".txt" {
+			fmt.Println("\n\033[31mplease enter .txt as file extension\033[0m")
+			return
+		}
+		outFile, err := os.OpenFile(filepath.Clean(target), os.O_CREATE|os.O_RDWR|os.O_APPEND|os.O_SYNC, 0600)
+		if err != nil {
+			logger.Errorln("Fail to open output file", err)
+			return
+		}
+		defer func() {
+			if err := outFile.Close(); err != nil {
+				logger.Errorf("Error closing file: %s\n", err)
 			}
-			if string(lastByte) != "\n\n" {
-					if _, err := outFile.WriteString("\n\n"); err != nil {
+		}()
+		if shouldPadding {
+			lastByte := make([]byte, 2)
+			end, err := outFile.Seek(0, io.SeekEnd)
+			if err != nil {
+				logger.Error(err)
+			}
+			if end > 1 {
+				n, err := outFile.ReadAt(lastByte, end-2)
+				if n != 2 {
+					fmt.Printf("\n\033[31mfile corrupt\033[0m")
 					return
+				} else if err != nil {
+					logger.Error(err)
+					return
+				}
+				if string(lastByte) != "\n\n" {
+					if _, err := outFile.WriteString("\n\n"); err != nil {
+						return
+					}
 				}
 			}
 		}
-	}
 		out = outFile
 	}
 	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, target), tea.WithAltScreen())
@@ -148,6 +151,6 @@ func main() {
 			logger.Error(m.GetError())
 		} else {
 			logger.Infoln("normally exit")
+		}
 	}
-}
 }

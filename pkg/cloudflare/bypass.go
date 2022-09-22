@@ -21,8 +21,8 @@ func NewClient(logger *logrus.Logger) (c *http.Client, err error) {
 
 	scraper_transport, err := NewTransport(logger, &http.Transport{
 		TLSClientConfig: &tls.Config{
-			PreferServerCipherSuites: false,
-			CurvePreferences:         []tls.CurveID{tls.CurveP256, tls.CurveP384, tls.CurveP521, tls.X25519},
+			MinVersion:       tls.VersionTLS12,
+			CurvePreferences: []tls.CurveID{tls.CurveP256, tls.CurveP384, tls.CurveP521, tls.X25519},
 		},
 	})
 	if err != nil {

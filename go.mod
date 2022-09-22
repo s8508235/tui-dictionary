@@ -3,7 +3,6 @@ module github.com/s8508235/tui-dictionary
 go 1.17
 
 require (
-	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/aaaton/golem/v4 v4.0.1
 	github.com/aaaton/golem/v4/dicts/en v1.0.1
 	github.com/c-bata/go-prompt v0.2.6
@@ -17,6 +16,7 @@ require (
 )
 
 require (
+	github.com/PuerkitoBio/goquery v1.8.0 // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/antchfx/htmlquery v1.2.5 // indirect
 	github.com/antchfx/xmlquery v1.3.12 // indirect
