@@ -1,3 +1,9 @@
+## v0.1.1 (2022-09-22)
+
+### Refactor
+
+- use bypass to fetch collins content
+
 ## v0.1.0 (2022-08-14)
 
 ### Fix
