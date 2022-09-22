@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/gocolly/colly/v2"
+	"github.com/s8508235/tui-dictionary/pkg/cloudflare"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/dict"
 )
@@ -69,27 +70,24 @@ func NewDICTClient(logger *log.Logger, network, addr, prefix string) (*DICTClien
 }
 
 func NewCollinsDictionary(logger *log.Logger) (Interface, error) {
-
-	// return &ChromeDPCrawler{
-	// 	Context: context.Background(),
-	// 	Logger:  logger,
-	// 	SearchURL: func(word string) string {
-	// 		return fmt.Sprintf(collinsURL, re.ReplaceAllString(word, "-"))
-	// 	},
-	// 	Selector: collinsSelector,
-	// }, nil
-	// c := colly.NewCollector()
-	// // don't want to cache anything since it should be a light query
-	// if err := c.SetStorage(&emptyStorage{}); err != nil {
-	// 	return nil, err
-	// }
-	return &CollinsCrawler{
-		// Crawler: c,
-		Logger: logger,
+	c := colly.NewCollector()
+	// don't want to cache anything since it should be a light query
+	if err := c.SetStorage(&emptyStorage{}); err != nil {
+		return nil, err
+	}
+	if client, err := cloudflare.NewClient(logger); err != nil {
+		return nil, err
+	} else {
+		c.SetClient(client)
+	}
+	return &WebDictionaryCrawler{
+		Crawler: c,
+		Logger:  logger,
 		SearchURL: func(word string) string {
 			return fmt.Sprintf(collinsURL, re.ReplaceAllString(word, "-"))
 		},
-		Selector: collinsSelector,
+		Selector:   collinsSelector,
+		SearchFunc: generalWebDictionarySearch,
 	}, nil
 }
 
