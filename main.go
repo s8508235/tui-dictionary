@@ -38,7 +38,11 @@ func initialModel(logger *logrus.Logger, lemmatizer *golem.Lemmatizer,
 	dictionary dictionary.Interface, out io.Writer, lang entity.DictionaryLanguage, target string) model.Dictionary {
 
 	searchWord := textinput.New()
-	searchWord.Placeholder = "test"
+	if lang == entity.Russian {
+		searchWord.Placeholder = "о́пыт"
+	} else {
+		searchWord.Placeholder = "test"
+	}
 	searchWord.Focus()
 	s := spinner.New()
 	// https://github.com/briandowns/spinner
@@ -94,6 +98,9 @@ func main() {
 	if choice, err = sp.RunPrompt(); err != nil && err != promptkit.ErrAborted {
 		logger.Error("Error: %v\n", err)
 		os.Exit(1)
+	} else if err == promptkit.ErrAborted {
+		logger.Info("Exit without choosing the language")
+		os.Exit(0)
 	}
 	var language entity.DictionaryLanguage
 	lang, ok := choice.Value.(string)

@@ -28,7 +28,7 @@ func WordValidate(s string, lang entity.DictionaryLanguage) error {
 		}
 	case entity.Russian:
 		for _, c := range s {
-			if !unicode.Is(unicode.Cyrillic, c) && int32(c) != 769 {
+			if !unicode.Is(unicode.Cyrillic, c) && int32(c) != 769 && !unicode.IsSpace(c) {
 				return ErrCyrillic
 			}
 		}

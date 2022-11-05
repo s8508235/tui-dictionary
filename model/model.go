@@ -90,7 +90,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				switch m.Language {
 				case entity.English:
-				m.searchWord = m.Lemmatizer.Lemma(inputWord)
+					m.searchWord = m.Lemmatizer.Lemma(inputWord)
 				case entity.Russian:
 					m.searchWord, err = tools.RussianPreprocess(inputWord)
 					if err != nil {
@@ -121,7 +121,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
-			case "q", "Q":
+			case "q", "Q", "й", "Й":
 				// back to search state
 				return m.backToSearch(), textinput.Blink
 			case "ctrl+c", "ctrl+C":
@@ -153,10 +153,10 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
-			case "c", "C":
+			case "c", "C", "с", "С":
 				m.warnMsg = ""
 				return m, nil
-			case "f", "F", "ctrl+s", "ctrl+S":
+			case "f", "F", "ctrl+s", "ctrl+S", "а", "А":
 				if len(m.Selected) == 0 {
 					m.warnMsg = "Please at least select one definition"
 					return m, nil
@@ -174,18 +174,18 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// These keys should exit the program.
 			case "ctrl+c", "ctrl+C":
 				return m, tea.Quit
-			case "up", "w", "W":
+			case "up", "w", "W", "ц", "Ц":
 				m.cursor = (m.cursor - 1 + len(m.Choices)) % len(m.Choices)
-			case "down", "s", "S":
+			case "down", "s", "S", "ы", "Ы":
 				m.cursor = (m.cursor + 1 + len(m.Choices)) % len(m.Choices)
-			case "enter", " ", "x", "X":
+			case "enter", " ", "x", "X", "ч", "Ч":
 				_, ok := m.Selected[m.cursor]
 				if ok {
 					delete(m.Selected, m.cursor)
 				} else {
 					m.Selected[m.cursor] = struct{}{}
 				}
-			case "q", "Q":
+			case "q", "Q", "й", "Й":
 				// back to search state
 				return m.backToSearch(), textinput.Blink
 			}

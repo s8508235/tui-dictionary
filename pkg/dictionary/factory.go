@@ -216,7 +216,6 @@ func NewRussianDictDictionary(logger *log.Logger) (Interface, error) {
 		Logger:  logger,
 		SearchURL: func(word string) string {
 			s := fmt.Sprintf(russianDictURL, replaceSpaceWithASCII(removeRussianAccentMarks(word)))
-			logger.Infoln(s)
 			return s
 		},
 		Selector:   russianDictSelector,
@@ -236,7 +235,6 @@ func NewOpenRussianDictionary(logger *log.Logger) (Interface, error) {
 		Logger:  logger,
 		SearchURL: func(word string) string {
 			s := fmt.Sprintf(openRussianURL, replaceSpaceWithASCII(removeRussianAccentMarks(word)))
-			logger.Infoln(s)
 			return s
 		},
 		Selector:   openRussianSelector,
