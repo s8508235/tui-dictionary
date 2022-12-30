@@ -11,10 +11,10 @@ search: ## single search
 .PHONY: build build-windows
 
 build: ## build server binary for linux
-	GOOS=linux go build -o ${APP} main.go
+	GOOS=linux go build -race -o ${APP} main.go
 	
 build-windows: ## build server binary for windows
-	GOOS=windows GOARCH=amd64 go build -o ${APP}.exe main.go
+	GOOS=windows GOARCH=amd64 go build -race -o ${APP}.exe main.go
 
 lint-install: 
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.49.0

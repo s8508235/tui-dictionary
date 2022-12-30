@@ -45,8 +45,10 @@ func RussianPreprocess(word string) (string, error) {
 	c.OnError(func(_ *colly.Response, err error) {
 		fmt.Println("Something went wrong:", err)
 	})
-	c.Visit("https://russiangram.com/")
-
+	err := c.Visit("https://russiangram.com/")
+	if err != nil {
+		return "", err
+	}
 	c.OnHTML("textarea.input-textbox", func(e *colly.HTMLElement) {
 		result = e.Text
 	})
@@ -62,7 +64,7 @@ func RussianPreprocess(word string) (string, error) {
 		"ctl00$MainContent$UserSentenceTextbox": word,
 		"ctl00$MainContent$SubmitButton":        "Annotate",
 	}
-	err := c.Post("https://russiangram.com/", formData)
+	err = c.Post("https://russiangram.com/", formData)
 
 	return result, err
 }

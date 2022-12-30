@@ -28,3 +28,4 @@ app.ini
 *.db
 bin/
 *.txt
+*.log

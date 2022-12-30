@@ -66,6 +66,12 @@ func initialModel(logger *logrus.Logger, lemmatizer *golem.Lemmatizer,
 
 func main() {
 	logger := log.New()
+	logFile, err := os.OpenFile("tui-dictionary.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		logger.Errorf("create log failed: %v\n", err)
+		os.Exit(1)
+	}
+	logger.SetOutput(logFile)
 	// logger.SetLevel(logrus.DebugLevel)
 	files, err := os.ReadDir("./")
 	if err != nil {
@@ -96,7 +102,7 @@ func main() {
 	var choice *selection.Choice
 
 	if choice, err = sp.RunPrompt(); err != nil && err != promptkit.ErrAborted {
-		logger.Error("Error: %v\n", err)
+		logger.Errorf("Error: %v\n", err)
 		os.Exit(1)
 	} else if err == promptkit.ErrAborted {
 		logger.Info("Exit without choosing the language")
@@ -105,7 +111,7 @@ func main() {
 	var language entity.DictionaryLanguage
 	lang, ok := choice.Value.(string)
 	if !ok {
-		logger.Error("Error: %v\n", err)
+		logger.Errorf("Error: %v\n", err)
 		os.Exit(1)
 	}
 	switch lang {
@@ -204,7 +210,7 @@ func main() {
 	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, language, target), tea.WithAltScreen())
 	// p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, language, target))
 
-	if m, err := p.StartReturningModel(); err != nil {
+	if m, err := p.Run(); err != nil {
 		logger.Fatal(err)
 	} else if m, ok := m.(model.Dictionary); ok {
 		if m.GetError() != nil {
