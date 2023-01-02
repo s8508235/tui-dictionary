@@ -1,6 +1,7 @@
 package dictionary
 
 import (
+	"strings"
 	"sync"
 
 	"golang.org/x/sync/errgroup"
@@ -26,6 +27,7 @@ func (m *MyPrefer) Search(word string) ([]string, error) {
 			}
 			for _, res := range r {
 				res = re.ReplaceAllString(res, " ")
+				res = strings.TrimSpace(res)
 				resultChan <- res
 			}
 			return nil

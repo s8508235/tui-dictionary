@@ -25,6 +25,7 @@ const (
 	dictionarySearchStart dictionaryState = iota
 	dictionarySearching
 	dictionarySelectDef
+	dictionaryDefDetail
 )
 
 type Dictionary struct {
@@ -188,8 +189,30 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "q", "Q", "й", "Й":
 				// back to search state
 				return m.backToSearch(), textinput.Blink
+			case "tab":
+				m.state = dictionaryDefDetail
 			}
 
+		}
+	case dictionaryDefDetail:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter", " ", "x", "X", "ч", "Ч":
+				_, ok := m.Selected[m.cursor]
+				if ok {
+					delete(m.Selected, m.cursor)
+				} else {
+					m.Selected[m.cursor] = struct{}{}
+				}
+				m.state = dictionarySelectDef
+			case "q", "Q", "й", "Й":
+				// back to select def state
+				m.state = dictionarySelectDef
+			case "ctrl+c", "ctrl+C":
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	default:
 		m.err = errors.New("unreachable")
@@ -287,6 +310,13 @@ func (m Dictionary) View() string {
 				}
 			}
 		}
+		return fmt.Sprintf("%s%s%s", header, content, footer)
+	case dictionaryDefDetail:
+		header := fmt.Sprintf("Target: %s\n", m.Target)
+		header += fmt.Sprintf("The %d definition for \033[92m%s\033[0m:\n\n", m.cursor+1, m.searchWord)
+		content := fmt.Sprintf("\t%s\n", m.Choices[m.cursor])
+		footer := "\033[38:2:255:165:0m[end of detailed definition]\033[0m\n"
+		footer += "Press space, enter or x to select and quit detailed view\nq to quit without changes\n"
 		return fmt.Sprintf("%s%s%s", header, content, footer)
 	default:
 		return "some went wrong"
