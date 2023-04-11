@@ -171,11 +171,7 @@ func NewMyPreferDictionary(logger *log.Logger) (*MyPrefer, error) {
 	if err != nil {
 		return nil, err
 	}
-	urban, err := NewUrbanDictionary(logger)
-	if err != nil {
-		return nil, err
-	}
-	dictionaries := []Interface{collins, webster, learner, urban}
+	dictionaries := []Interface{collins, webster, learner}
 	return &MyPrefer{
 		Dictionaries: dictionaries,
 	}, nil

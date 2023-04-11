@@ -15,6 +15,7 @@ func main() {
 	processed, err := tools.RussianPreprocess(searchWord)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 	fmt.Println(processed)
 

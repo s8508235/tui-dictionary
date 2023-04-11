@@ -28,6 +28,7 @@ func main() {
 	results, err := dict.Search(searchWord)
 	if err == dictionary.ErrorNoDef {
 		fmt.Printf("no definition for: %s\n", searchWord)
+		return
 	} else if err != nil {
 		logger.Errorln("Search error:", err)
 		return

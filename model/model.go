@@ -103,7 +103,7 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tea.Quit
 				}
 				m.warnMsg = ""
-				m.Logger.Debugln("going to search", m.searchWord)
+				m.Logger.Infoln("going to search", m.searchWord)
 				// go to selectDef state
 				m.state = dictionarySearching
 				m.SearchWord.Blur()
@@ -372,6 +372,6 @@ func writeOutput(logger *logrus.Logger, out io.Writer, searchWord string, defini
 		logger.Errorln("Fail to write output file though:", err)
 		return err
 	}
-	logger.Debugln("word:", searchWord, "definition:", strings.Join(definition, ";"))
+	logger.Infoln("word:", searchWord, "definition:", strings.Join(definition, ";"))
 	return nil
 }
