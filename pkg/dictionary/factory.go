@@ -104,6 +104,7 @@ func NewCollinsDictionary(logger *log.Logger) (Interface, error) {
 		},
 		Selector:   collinsSelector,
 		SearchFunc: generalWebDictionarySearch,
+		Name:       "collins",
 	}, nil
 }
 
@@ -121,6 +122,7 @@ func NewUrbanDictionary(logger *log.Logger) (Interface, error) {
 		},
 		Selector:   urbanSelector,
 		SearchFunc: generalWebDictionarySearch,
+		Name:       "urban",
 	}, nil
 }
 
@@ -138,6 +140,7 @@ func NewLearnerDictionary(logger *log.Logger) (Interface, error) {
 		},
 		Selector:   learnerSelector,
 		SearchFunc: generalWebDictionarySearch,
+		Name:       "britannica",
 	}, nil
 }
 
@@ -155,6 +158,7 @@ func NewWebsterDictionary(logger *log.Logger) (Interface, error) {
 		},
 		Selector:   websterURLSelector,
 		SearchFunc: websterSearch,
+		Name:       "webster",
 	}, nil
 }
 
@@ -172,6 +176,7 @@ func NewCambridgeDictionary(logger *log.Logger) (Interface, error) {
 		},
 		Selector:   cambridgeSelector,
 		SearchFunc: generalWebDictionarySearch,
+		Name:       "cambridge",
 	}, nil
 }
 
@@ -189,6 +194,7 @@ func NewOxfordLearnerDictionary(logger *log.Logger) (Interface, error) {
 		},
 		Selector:   oxfordSelector,
 		SearchFunc: generalWebDictionarySearch,
+		Name:       "oxford-learner",
 	}, nil
 }
 
@@ -238,6 +244,7 @@ func NewMyPreferWithUrbanDictionary(logger *log.Logger) (Interface, error) {
 	}
 	dictionaries := []Interface{oxford, cambridge, webster, learner, urban}
 	return &MyPrefer{
+		Name:         "eng-prefer",
 		Dictionaries: dictionaries,
 	}, nil
 }
@@ -263,6 +270,7 @@ func NewDictComRussianEnglishDictionary(logger *log.Logger) (Interface, error) {
 		},
 		Selector:   dictComRussianEnglishSelector,
 		SearchFunc: generalWebDictionarySearch,
+		Name:       "dict-com-ru",
 	}, nil
 }
 
@@ -281,6 +289,7 @@ func NewRussianDictDictionary(logger *log.Logger) (Interface, error) {
 		},
 		Selector:   russianDictSelector,
 		SearchFunc: generalWebDictionarySearch,
+		Name:       "ru-dict",
 	}, nil
 }
 
@@ -300,6 +309,7 @@ func NewOpenRussianDictionary(logger *log.Logger) (Interface, error) {
 		},
 		Selector:   openRussianSelector,
 		SearchFunc: generalWebDictionarySearch,
+		Name:       "open-ru",
 	}, nil
 }
 
@@ -318,6 +328,7 @@ func NewMyPreferRUDictionary(logger *log.Logger) (*MyPrefer, error) {
 	}
 	dictionaries := []Interface{dictComRE, RUDict, openRU}
 	return &MyPrefer{
+		Name:         "ru-prefer",
 		Dictionaries: dictionaries,
 	}, nil
 }

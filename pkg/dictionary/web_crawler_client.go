@@ -13,6 +13,7 @@ type WebDictionaryCrawler struct {
 	SearchFunc func(results *[]string, counter *int) func(e *colly.HTMLElement)
 	Crawler    *colly.Collector
 	Logger     *log.Logger
+	Name       string
 }
 
 func (c *WebDictionaryCrawler) Search(word string) ([]string, error) {
@@ -42,4 +43,8 @@ func (c *WebDictionaryCrawler) Search(word string) ([]string, error) {
 		return result, ErrorNoDef
 	}
 	return result, err
+}
+
+func (c *WebDictionaryCrawler) GetName() string {
+	return c.Name
 }

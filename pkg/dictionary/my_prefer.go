@@ -8,6 +8,7 @@ import (
 )
 
 type MyPrefer struct {
+	Name         string
 	Dictionaries []Interface
 }
 
@@ -51,4 +52,8 @@ func (m *MyPrefer) Search(word string) ([]string, error) {
 		return result, ErrorNoDef
 	}
 	return result, nil
+}
+
+func (m *MyPrefer) GetName() string {
+	return m.Name
 }
