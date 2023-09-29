@@ -134,7 +134,7 @@ func NewLearnerDictionary(logger *log.Logger) (Interface, error) {
 		Crawler: c,
 		Logger:  logger,
 		SearchURL: func(word string) string {
-			return fmt.Sprintf(learnerURL, replaceSpaceWithASCII(word))
+			return fmt.Sprintf(learnerURL, re.ReplaceAllString(word, "-"))
 		},
 		Selector:   learnerSelector,
 		SearchFunc: generalWebDictionarySearch,
@@ -158,7 +158,49 @@ func NewWebsterDictionary(logger *log.Logger) (Interface, error) {
 	}, nil
 }
 
+func NewCambridgeDictionary(logger *log.Logger) (Interface, error) {
+	c := colly.NewCollector()
+	// don't want to cache anything since it should be a light query
+	if err := c.SetStorage(&emptyStorage{}); err != nil {
+		return nil, err
+	}
+	return &WebDictionaryCrawler{
+		Crawler: c,
+		Logger:  logger,
+		SearchURL: func(word string) string {
+			return fmt.Sprintf(cambridgeURL, replaceSpaceWithASCII(word))
+		},
+		Selector:   cambridgeSelector,
+		SearchFunc: generalWebDictionarySearch,
+	}, nil
+}
+
+func NewOxfordLearnerDictionary(logger *log.Logger) (Interface, error) {
+	c := colly.NewCollector()
+	// don't want to cache anything since it should be a light query
+	if err := c.SetStorage(&emptyStorage{}); err != nil {
+		return nil, err
+	}
+	return &WebDictionaryCrawler{
+		Crawler: c,
+		Logger:  logger,
+		SearchURL: func(word string) string {
+			return fmt.Sprintf(oxfordURL, re.ReplaceAllString(word, "-"), re.ReplaceAllString(word, "+"))
+		},
+		Selector:   oxfordSelector,
+		SearchFunc: generalWebDictionarySearch,
+	}, nil
+}
+
 func NewMyPreferDictionary(logger *log.Logger) (Interface, error) {
+	oxford, err := NewOxfordLearnerDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
+	cambridge, err := NewCambridgeDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
 	webster, err := NewWebsterDictionary(logger)
 	if err != nil {
 		return nil, err
@@ -167,26 +209,26 @@ func NewMyPreferDictionary(logger *log.Logger) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-	collins, err := NewCollinsDictionary(logger)
-	if err != nil {
-		return nil, err
-	}
-	dictionaries := []Interface{collins, webster, learner}
+	dictionaries := []Interface{oxford, cambridge, webster, learner}
 	return &MyPrefer{
 		Dictionaries: dictionaries,
 	}, nil
 }
 
 func NewMyPreferWithUrbanDictionary(logger *log.Logger) (Interface, error) {
+	oxford, err := NewOxfordLearnerDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
+	cambridge, err := NewCambridgeDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
 	webster, err := NewWebsterDictionary(logger)
 	if err != nil {
 		return nil, err
 	}
 	learner, err := NewLearnerDictionary(logger)
-	if err != nil {
-		return nil, err
-	}
-	collins, err := NewCollinsDictionary(logger)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +236,7 @@ func NewMyPreferWithUrbanDictionary(logger *log.Logger) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-	dictionaries := []Interface{collins, webster, learner, urban}
+	dictionaries := []Interface{oxford, cambridge, webster, learner, urban}
 	return &MyPrefer{
 		Dictionaries: dictionaries,
 	}, nil
