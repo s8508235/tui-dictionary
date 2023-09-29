@@ -12,6 +12,7 @@ require (
 	github.com/erikgeiser/promptkit v0.9.0
 	github.com/gocolly/colly/v2 v2.1.0
 	github.com/keepeye/logrus-filename v0.0.0-20190711075016-ce01a4391dd1
+	github.com/muesli/termenv v0.15.2
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/net v0.15.0
 	golang.org/x/sync v0.3.0

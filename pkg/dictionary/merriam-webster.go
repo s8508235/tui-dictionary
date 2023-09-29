@@ -6,7 +6,7 @@ import (
 
 const (
 	websterURL         = "https://www.merriam-webster.com/dictionary/%s"
-	websterURLSelector = "div#definition-wrapper div.sb span.dt span.dtText"
+	websterURLSelector = "div.sb span.dt span.dtText"
 )
 
 func websterSearch(results *[]string, counter *int) func(e *colly.HTMLElement) {

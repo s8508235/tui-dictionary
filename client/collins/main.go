@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	log "github.com/s8508235/tui-dictionary/pkg/log"
 	"github.com/sirupsen/logrus"
 
 	"github.com/s8508235/tui-dictionary/pkg/dictionary"
@@ -13,7 +12,7 @@ import (
 
 func main() {
 
-	logger := log.New()
+	logger := logrus.New()
 	// dict, err := dictionary.NewMyPreferDictionary(logger, "tcp", "dict.dict.org:2628", "!")
 	dict, err := dictionary.NewCollinsDictionary(logger)
 	if err != nil {
