@@ -158,7 +158,7 @@ func NewWebsterDictionary(logger *log.Logger) (Interface, error) {
 	}, nil
 }
 
-func NewMyPreferDictionary(logger *log.Logger) (*MyPrefer, error) {
+func NewMyPreferDictionary(logger *log.Logger) (Interface, error) {
 	webster, err := NewWebsterDictionary(logger)
 	if err != nil {
 		return nil, err
@@ -172,6 +172,29 @@ func NewMyPreferDictionary(logger *log.Logger) (*MyPrefer, error) {
 		return nil, err
 	}
 	dictionaries := []Interface{collins, webster, learner}
+	return &MyPrefer{
+		Dictionaries: dictionaries,
+	}, nil
+}
+
+func NewMyPreferWithUrbanDictionary(logger *log.Logger) (Interface, error) {
+	webster, err := NewWebsterDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
+	learner, err := NewLearnerDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
+	collins, err := NewCollinsDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
+	urban, err := NewUrbanDictionary(logger)
+	if err != nil {
+		return nil, err
+	}
+	dictionaries := []Interface{collins, webster, learner, urban}
 	return &MyPrefer{
 		Dictionaries: dictionaries,
 	}, nil

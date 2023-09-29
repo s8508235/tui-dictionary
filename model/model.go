@@ -80,10 +80,8 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					} else {
 						m.warnMsg = "empty input"
 					}
-					shouldCursorReset := m.SearchWord.Reset()
-					if shouldCursorReset {
-						m.SearchWord.Focus()
-					}
+					m.SearchWord.Reset()
+					m.SearchWord.Focus()
 					return m, textinput.Blink
 				default:
 					m.err = fmt.Errorf("fail to ask: %w", err)
@@ -139,10 +137,8 @@ func (m Dictionary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			m.warnMsg = fmt.Sprintf("%s for %s", dictionary.ErrorNoDef.Error(), m.searchWord)
-			shouldCursorReset := m.SearchWord.Reset()
-			if shouldCursorReset {
-				m.SearchWord.Focus()
-			}
+			m.SearchWord.Reset()
+			m.SearchWord.Focus()
 			m.state = dictionarySearchStart
 			return m, textinput.Blink
 		default:
@@ -329,10 +325,8 @@ func (m Dictionary) backToSearch() Dictionary {
 	m.Choices = make([]string, 0)
 	m.cursor = 0
 	m.state = dictionarySearchStart
-	shouldCursorReset := m.SearchWord.Reset()
-	if shouldCursorReset {
-		m.SearchWord.Focus()
-	}
+	m.SearchWord.Reset()
+	m.SearchWord.Focus()
 	return m
 }
 

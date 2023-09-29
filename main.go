@@ -16,6 +16,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/erikgeiser/promptkit"
 	"github.com/erikgeiser/promptkit/selection"
+	"github.com/muesli/termenv"
 	"github.com/s8508235/tui-dictionary/model"
 	"github.com/s8508235/tui-dictionary/pkg/dictionary"
 	"github.com/s8508235/tui-dictionary/pkg/entity"
@@ -85,21 +86,38 @@ func main() {
 		}
 	}
 	logger.Debug(strings.Join(fileNameList, ","))
-
-	sp := selection.New("Choose a language:", []*selection.Choice{
+	type langChoice struct {
+		Display    string
+		Dictionary entity.DictionaryLanguage
+	}
+	choices := []langChoice{
 		{
-			Index:  0,
-			String: "English to English",
-			Value:  "en",
+			Display:    "English to English",
+			Dictionary: entity.English,
 		},
 		{
-			Index:  1,
-			String: "Russian to English",
-			Value:  "ru",
+			Display:    "Russian to English",
+			Dictionary: entity.Russian,
 		},
-	})
+		{
+			Display:    "English to English (w Urban)",
+			Dictionary: entity.EnglishUrban,
+		},
+	}
+	sp := selection.New("Choose a dictionary:", choices)
 	sp.Filter = nil
-	var choice *selection.Choice
+	blue := termenv.String().Foreground(termenv.ANSI256Color(32)) //nolint:gomnd
+	sp.SelectedChoiceStyle = func(c *selection.Choice[langChoice]) string {
+		return blue.Bold().Styled(c.Value.Display)
+	}
+	sp.UnselectedChoiceStyle = func(c *selection.Choice[langChoice]) string {
+		return c.Value.Display
+	}
+	sp.ResultTemplate = `{{- print .Prompt " " (Foreground "32"  (display .FinalChoice)) "\n" -}}`
+	sp.ExtendedTemplateFuncs = map[string]interface{}{
+		"display": func(c *selection.Choice[langChoice]) string { return c.Value.Display },
+	}
+	var choice langChoice
 
 	if choice, err = sp.RunPrompt(); err != nil && err != promptkit.ErrAborted {
 		logger.Errorf("Error: %v\n", err)
@@ -108,24 +126,9 @@ func main() {
 		logger.Info("Exit without choosing the language")
 		os.Exit(0)
 	}
-	var language entity.DictionaryLanguage
-	lang, ok := choice.Value.(string)
-	if !ok {
-		logger.Errorf("Error: %v\n", err)
-		os.Exit(1)
-	}
-	switch lang {
-	case "en":
-		language = entity.English
-	case "ru":
-		language = entity.Russian
-	default:
-		logger.Error(entity.ErrUnknownLanguage)
-		os.Exit(1)
-	}
 
 	var dict dictionary.Interface
-	switch language {
+	switch choice.Dictionary {
 	case entity.English:
 		dict, err = dictionary.NewMyPreferDictionary(logger)
 		if err != nil {
@@ -134,6 +137,12 @@ func main() {
 		}
 	case entity.Russian:
 		dict, err = dictionary.NewMyPreferRUDictionary(logger)
+		if err != nil {
+			logger.Errorln("Fail to init dictionary:", err)
+			return
+		}
+	case entity.EnglishUrban:
+		dict, err = dictionary.NewMyPreferWithUrbanDictionary(logger)
 		if err != nil {
 			logger.Errorln("Fail to init dictionary:", err)
 			return
@@ -207,7 +216,8 @@ func main() {
 		}
 		out = outFile
 	}
-	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, language, target), tea.WithAltScreen())
+	logger.Infof("choice lang: [%d] with source: %s", choice.Dictionary, target)
+	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, choice.Dictionary, target), tea.WithAltScreen())
 	// p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, language, target))
 
 	if m, err := p.Run(); err != nil {
