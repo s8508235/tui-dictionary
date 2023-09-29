@@ -88,23 +88,24 @@ func main() {
 	logger.Debug(strings.Join(fileNameList, ","))
 	type langChoice struct {
 		Display    string
-		Dictionary entity.DictionaryLanguage
+		Dictionary entity.DictionaryType
+		Language   entity.DictionaryLanguage
 	}
 	choices := []langChoice{
 		{
-			Display:    "English to English",
-			Dictionary: entity.English,
+			Display:  "English to English",
+			Language: entity.English,
 		},
 		{
-			Display:    "Russian to English",
-			Dictionary: entity.Russian,
+			Display:  "Russian to English",
+			Language: entity.Russian,
 		},
 		{
-			Display:    "English to English (w Urban)",
-			Dictionary: entity.EnglishUrban,
+			Display:  "English to English (w/Urban)",
+			Language: entity.English,
 		},
 	}
-	sp := selection.New("Choose a dictionary:", choices)
+	sp := selection.New("Choose a dictionary-language combination:", choices)
 	sp.Filter = nil
 	blue := termenv.String().Foreground(termenv.ANSI256Color(32)) //nolint:gomnd
 	sp.SelectedChoiceStyle = func(c *selection.Choice[langChoice]) string {
@@ -129,19 +130,19 @@ func main() {
 
 	var dict dictionary.Interface
 	switch choice.Dictionary {
-	case entity.English:
+	case entity.EnglishMyPrefer:
 		dict, err = dictionary.NewMyPreferDictionary(logger)
 		if err != nil {
 			logger.Errorln("Fail to init dictionary:", err)
 			return
 		}
-	case entity.Russian:
+	case entity.RussianMyPrefer:
 		dict, err = dictionary.NewMyPreferRUDictionary(logger)
 		if err != nil {
 			logger.Errorln("Fail to init dictionary:", err)
 			return
 		}
-	case entity.EnglishUrban:
+	case entity.EnglishMyPreferWithUrban:
 		dict, err = dictionary.NewMyPreferWithUrbanDictionary(logger)
 		if err != nil {
 			logger.Errorln("Fail to init dictionary:", err)
@@ -217,7 +218,7 @@ func main() {
 		out = outFile
 	}
 	logger.Infof("choice lang: [%d] with source: %s", choice.Dictionary, target)
-	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, choice.Dictionary, target), tea.WithAltScreen())
+	p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, choice.Language, target), tea.WithAltScreen())
 	// p := tea.NewProgram(initialModel(logger, lemmatizer, dict, out, language, target))
 
 	if m, err := p.Run(); err != nil {
