@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/gocolly/colly/v2"
-	"github.com/s8508235/tui-dictionary/pkg/cloudflare"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/dict"
 )
@@ -85,29 +84,6 @@ func NewDICTClient(logger *log.Logger, network, addr, prefix string) (*DICTClien
 	}, nil
 }
 
-func NewCollinsDictionary(logger *log.Logger) (Interface, error) {
-	c := colly.NewCollector()
-	// don't want to cache anything since it should be a light query
-	if err := c.SetStorage(&emptyStorage{}); err != nil {
-		return nil, err
-	}
-	if client, err := cloudflare.NewClient(logger); err != nil {
-		return nil, err
-	} else {
-		c.SetClient(client)
-	}
-	return &WebDictionaryCrawler{
-		Crawler: c,
-		Logger:  logger,
-		SearchURL: func(word string) string {
-			return fmt.Sprintf(collinsURL, re.ReplaceAllString(word, "-"))
-		},
-		Selector:   collinsSelector,
-		SearchFunc: generalWebDictionarySearch,
-		Name:       "collins",
-	}, nil
-}
-
 func NewUrbanDictionary(logger *log.Logger) (Interface, error) {
 	c := colly.NewCollector()
 	// don't want to cache anything since it should be a light query
@@ -172,7 +148,7 @@ func NewCambridgeDictionary(logger *log.Logger) (Interface, error) {
 		Crawler: c,
 		Logger:  logger,
 		SearchURL: func(word string) string {
-			return fmt.Sprintf(cambridgeURL, replaceSpaceWithASCII(word))
+			return fmt.Sprintf(cambridgeURL, re.ReplaceAllString(word, "-"))
 		},
 		Selector:   cambridgeSelector,
 		SearchFunc: generalWebDictionarySearch,

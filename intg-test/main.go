@@ -26,7 +26,7 @@ func main() {
 	englishWord := "divest"
 	splitedEnglishWord := "tie up"
 	logger := logrus.New()
-
+	logger.Level = logrus.DebugLevel
 	oxford, err := dictionary.NewOxfordLearnerDictionary(logger)
 	if err != nil {
 		logger.Error(err)
